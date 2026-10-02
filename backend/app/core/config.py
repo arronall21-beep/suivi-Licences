@@ -24,6 +24,10 @@ class Settings(BaseSettings):
 
     max_upload_mb: int = 10
 
+    # Devise des montants (code ISO + libellé affiché dans l'export Excel)
+    currency: str = "XOF"
+    currency_label: str = "FCFA"
+
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""

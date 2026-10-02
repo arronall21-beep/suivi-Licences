@@ -2,8 +2,11 @@ import type { Category, Status } from "./types";
 
 export const fmtDate = (d?: string | null) => (d ? new Date(d + (d.length === 10 ? "T00:00:00" : "")).toLocaleDateString("fr-FR") : "—");
 export const fmtDateTime = (d?: string | null) => (d ? new Date(d).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
+export const CURRENCY: string = import.meta.env.VITE_CURRENCY || "XOF";
 export const fmtMoney = (n?: number | string | null) =>
-  n === null || n === undefined || n === "" ? "—" : Number(n).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  n === null || n === undefined || n === "" ? "—" : Number(n).toLocaleString("fr-FR", { style: "currency", currency: CURRENCY, maximumFractionDigits: 0 });
+export const fmtMoneyCompact = (n?: number | null) =>
+  n === null || n === undefined ? "—" : Number(n).toLocaleString("fr-FR", { style: "currency", currency: CURRENCY, notation: "compact", maximumFractionDigits: 1 });
 export const fmtNum = (n?: number | null) => (n === null || n === undefined ? "—" : n.toLocaleString("fr-FR"));
 
 export const CATEGORY_LABELS: Record<Category | "CONTRAT", string> = {

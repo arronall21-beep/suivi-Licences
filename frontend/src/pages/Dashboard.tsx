@@ -2,7 +2,7 @@ import { AlertOctagon, AlertTriangle, ArrowRight, Boxes, FileSpreadsheet, FileTe
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CATEGORY_LABELS, CATEGORY_SLUG, STATUS_META, fmtDate, fmtMoney, fmtNum } from "../format";
+import { CATEGORY_LABELS, CATEGORY_SLUG, STATUS_META, fmtDate, fmtMoney, fmtMoneyCompact, fmtNum } from "../format";
 import { useFetch } from "../hooks";
 import type { Dashboard as D, Status } from "../types";
 import { DaysCell, EmptyState, PageHeader, PriorityBadge, Spinner, StatusBadge } from "../components/ui";
@@ -74,10 +74,10 @@ export default function Dashboard() {
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Contrats" value={k.contracts} icon={<FileText className="h-5 w-5" />} to="/contrats" sub={`${k.vendors} fournisseurs`} />
-        <Kpi label="Coût annuel des actifs" value={fmtMoney(d.finance.annual_cost_total)} icon={<Wallet className="h-5 w-5" />}
-          sub={`Contrats : ${fmtMoney(d.finance.contracts_annual_total)} / an`} />
-        <Kpi label="Budget estimé" value={fmtMoney(d.finance.budget_estimated_total)} icon={<Wallet className="h-5 w-5" />} sub="Somme des budgets estimés des actifs" />
-        <Kpi label="Budget renouvellement 12 mois" value={fmtMoney(d.finance.renewal_budget_12m)} icon={<Wallet className="h-5 w-5" />} sub="Échéances passées et à venir sous 12 mois" />
+        <Kpi label="Coût annuel des actifs" value={<span title={fmtMoney(d.finance.annual_cost_total)}>{fmtMoneyCompact(d.finance.annual_cost_total)}</span>} icon={<Wallet className="h-5 w-5" />}
+          sub={`Contrats : ${fmtMoneyCompact(d.finance.contracts_annual_total)} / an`} />
+        <Kpi label="Budget estimé" value={<span title={fmtMoney(d.finance.budget_estimated_total)}>{fmtMoneyCompact(d.finance.budget_estimated_total)}</span>} icon={<Wallet className="h-5 w-5" />} sub="Somme des budgets estimés des actifs" />
+        <Kpi label="Budget renouvellement 12 mois" value={<span title={fmtMoney(d.finance.renewal_budget_12m)}>{fmtMoneyCompact(d.finance.renewal_budget_12m)}</span>} icon={<Wallet className="h-5 w-5" />} sub="Échéances passées et à venir sous 12 mois" />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">

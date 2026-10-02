@@ -82,6 +82,7 @@ Comptes créés au premier lancement (à changer dans `.env`) :
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `VIEWER_EMAIL`, `VIEWER_PASSWORD` | Comptes initiaux |
 | `CORS_ORIGINS` | Origines autorisées, séparées par des virgules |
 | `MAX_UPLOAD_MB` | Taille maximale du fichier Excel (10 Mo par défaut) |
+| `CURRENCY`, `CURRENCY_LABEL` | Devise des montants (`XOF` / `FCFA` par défaut) pour l'export Excel ; côté interface : variable de build `VITE_CURRENCY` (défaut `XOF`) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS` | Envoi des emails d'alerte |
 | `ALERT_RECIPIENTS` | Destinataires des alertes, séparés par des virgules |
 | `ALERT_THRESHOLDS` | Seuils en jours (`90,60,30,7`) |
@@ -113,7 +114,7 @@ Règles appliquées :
 - Fournisseurs créés automatiquement, sans doublon (comparaison insensible à la casse et aux accents).
 - Chaque import est historisé avec son rapport complet.
 
-> **Jeu de démonstration** : le fichier `Suivi_Licence.xlsx` d'origine n'étant pas présent dans le dépôt, `data/Suivi_Licence.xlsx` est un fichier de démonstration au même format, avec des anomalies volontaires. Il est généré par `python backend/scripts/generate_demo_excel.py`, avec des dates relatives à aujourd'hui. Remplacez-le par le fichier métier réel : l'import est conçu pour en tolérer les variations de structure.
+> `data/Suivi_Licence.xlsx` est le fichier métier réel. Un jeu de démonstration au même format, avec des anomalies volontaires, peut être généré par `python backend/scripts/generate_demo_excel.py <chemin_sortie>`.
 
 ## Export Excel
 

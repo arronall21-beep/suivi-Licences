@@ -10,6 +10,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import lifecycle
+from app.core.config import settings
 from app.services import excel_layout as L
 from app.services.dashboard import build_dashboard, filter_renewals, load_all, renewal_items
 
@@ -25,7 +26,7 @@ STATUS_FILLS = {
     "OK": "D4EDDA",
 }
 DATE_FMT = "DD/MM/YYYY"
-MONEY_FMT = '#,##0.00 "€"'
+MONEY_FMT = f'#,##0 "{settings.currency_label}"'
 
 
 def _asset_value(asset, col: L.Col):
@@ -67,7 +68,7 @@ def _write_table(ws, columns: list[L.Col], rows: list[list], start_row: int = 1)
             cell.border = BORDER
             if isinstance(v, (date, datetime)):
                 cell.number_format = DATE_FMT
-            elif col.kind == "money" or "€" in col.label:
+            elif col.kind == "money" or col.key == "budget":
                 cell.number_format = MONEY_FMT
     for j, col in enumerate(columns, start=1):
         width = max([len(col.label)] + [len(str(r[j - 1])) for r in rows[:200] if r[j - 1] is not None])
@@ -127,10 +128,10 @@ def _write_dashboard(ws, d: dict):
         (
             "Finances",
             [
-                ("Coût annuel total actifs (€)", fi["annual_cost_total"]),
-                ("Montant annuel contrats (€)", fi["contracts_annual_total"]),
-                ("Budget estimé (€)", fi["budget_estimated_total"]),
-                ("Budget renouvellement 12 mois (€)", fi["renewal_budget_12m"]),
+                ("Coût annuel total actifs", fi["annual_cost_total"]),
+                ("Montant annuel contrats", fi["contracts_annual_total"]),
+                ("Budget estimé", fi["budget_estimated_total"]),
+                ("Budget renouvellement 12 mois", fi["renewal_budget_12m"]),
             ],
         ),
     ]
@@ -144,7 +145,7 @@ def _write_dashboard(ws, d: dict):
             ws.cell(row=row, column=1, value=label).border = BORDER
             vc = ws.cell(row=row, column=2, value=value)
             vc.border = BORDER
-            if "€" in label:
+            if label.startswith(("Coût", "Montant", "Budget")):
                 vc.number_format = MONEY_FMT
             row += 1
         row += 1

@@ -119,7 +119,7 @@ def parse_number(value) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
     text = str(value).strip().replace(" ", "").replace(" ", "").replace(" ", "")
-    text = re.sub(r"(€|eur|euros?|ht|ttc|\$|%)", "", text, flags=re.I)
+    text = re.sub(r"(€|eur|euros?|f ?cfa|xof|ht|ttc|\$|%)", "", text, flags=re.I)
     if text.count(",") == 1 and text.count(".") == 0:
         text = text.replace(",", ".")
     elif text.count(",") >= 1 and text.count(".") == 1 and text.rfind(".") > text.rfind(","):

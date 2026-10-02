@@ -14,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core import lifecycle
+from app.core.config import settings
 from app.database import Base
 
 CATEGORIES = ["LICENCE", "CERTIFICAT", "MATERIEL", "APPLICATION"]
@@ -61,7 +62,7 @@ class Contract(TimestampMixin, Base):
     end_date: Mapped[date | None] = mapped_column(Date, index=True)
     notice_period_days: Mapped[int | None] = mapped_column(Integer)
     annual_amount: Mapped[float | None] = mapped_column(Numeric(14, 2))
-    currency: Mapped[str | None] = mapped_column(String(10), default="EUR")
+    currency: Mapped[str | None] = mapped_column(String(10), default=lambda: settings.currency)
     status: Mapped[str | None] = mapped_column(String(50))
     attachment_url: Mapped[str | None] = mapped_column(String(500))
 

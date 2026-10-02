@@ -246,6 +246,8 @@ class Importer:
                     setattr(vendor, f, data[f][:255])
         for f in VENDOR_FIELDS:
             data.pop(f, None)
+        if vendor is None and all(v is None for k, v in data.items() if k != "reference"):
+            self.report.warn(sheet, row, "ligne incomplète : seule la référence du contrat est renseignée")
         key = data["reference"].strip().upper()
         c = self.contracts.get(key)
         created = c is None

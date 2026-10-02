@@ -77,7 +77,7 @@ class ContractBase(BaseModel):
     end_date: date | None = None
     notice_period_days: int | None = Field(default=None, ge=0, le=3650)
     annual_amount: float | None = Field(default=None, ge=0)
-    currency: str | None = "EUR"
+    currency: str | None = None
     status: str | None = None
     attachment_url: str | None = None
 

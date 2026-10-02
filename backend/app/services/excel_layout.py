@@ -43,7 +43,16 @@ VENDOR = ["fournisseur", "editeur", "editeurfournisseur", "constructeur", "vendo
 CONTRACT = ["contrat", "referencecontrat", "refcontrat", "contratassocie", "ncontrat"]
 OWNER = ["responsable", "responsableinterne", "proprietaire", "gestionnaire", "owner", "referent"]
 DEPT = ["direction", "directionutilisatrice", "departement", "service", "entite", "directionmetier"]
-START = ["datedebut", "debut", "datededebut", "dateacquisition", "datedachat", "datemiseenservice", "dateemission"]
+START = [
+    "datedebut",
+    "debut",
+    "datededebut",
+    "dateacquisition",
+    "datedachat",
+    "datemiseenservice",
+    "dateemission",
+    "datedebutcontrat",
+]
 END = [
     "dateexpiration",
     "datedexpiration",
@@ -59,9 +68,9 @@ END = [
 ]
 CRIT = ["criticite", "criticity", "niveaucriticite", "priorite"]
 COST = ["coutannuel", "coutannuelht", "montantannuel", "cout", "couteur", "coutannueleur", "montant"]
-BUDGET = ["budgetestime", "budget", "budgetrenouvellement", "budgetprevisionnel"]
+BUDGET = ["budgetestime", "budget", "budgetrenouvellement", "budgetprevisionnel", "budgetprevu", "coutrenouvellement"]
 ACTION = ["plandaction", "planaction", "action", "actions", "actionaprevoir"]
-OBS = ["observations", "observation", "commentaire", "commentaires", "remarques", "notes"]
+OBS = ["observations", "observation", "commentaire", "commentaires", "remarques", "notes", "colonne1"]
 
 COMMON_TAIL = [
     Col("Responsable interne", "internal_owner", aliases=OWNER),
@@ -73,8 +82,8 @@ LIFECYCLE_COLS = [
 ]
 MONEY_TAIL = [
     Col("Criticité", "criticality", "criticality", CRIT),
-    Col("Coût annuel (€)", "annual_cost", "money", COST),
-    Col("Budget estimé (€)", "budget_estimated", "money", BUDGET),
+    Col("Coût annuel", "annual_cost", "money", COST),
+    Col("Budget estimé", "budget_estimated", "money", BUDGET),
     Col("Plan d'action", "action_plan", aliases=ACTION),
     Col("Observations", "observation", aliases=OBS),
 ]
@@ -124,14 +133,24 @@ CERTIFICATS = Sheet(
         Col(
             "Nom / Domaine",
             "name",
-            aliases=["nomdomaine", "domaine", "nom", "cn", "commonname", "nomducertificat", "certificat", "designation"],
+            aliases=[
+                "nomdomaine",
+                "domaine",
+                "servicedomaine",
+                "nom",
+                "cn",
+                "commonname",
+                "nomducertificat",
+                "certificat",
+                "designation",
+            ],
         ),
         Col("Type de certificat", "cert_type", aliases=["typedecertificat", "typecertificat", "type"]),
         Col("Autorité de certification", "authority", aliases=["autoritedecertification", "autorite", "ac", "emetteur", "ca"]),
         Col(
             "Serveur / Application cible",
             "server_app_target",
-            aliases=["serveurapplicationcible", "serveur", "applicationcible", "cible", "serveurcible"],
+            aliases=["serveurapplicationcible", "serveurapplication", "serveur", "applicationcible", "cible", "serveurcible"],
         ),
         Col("Environnement", "environment", aliases=["environnement", "env"]),
         Col("Fournisseur", "vendor", "vendor", VENDOR),
@@ -201,6 +220,8 @@ APPLICATIONS = Sheet(
         Col("Fournisseur", "vendor", "vendor", VENDOR),
         Col("Contrat", "contract", "contract", CONTRACT),
         Col("Niveau SLA", "sla_level", aliases=["niveausla", "sla"]),
+        Col("Environnement", "environment", aliases=["environnement", "env"]),
+        Col("Contrat maintenance", "support_contract_type", aliases=["contratmaintenance", "typecontratmaintenance"]),
         Col("Date de mise en service", "start_date", "date", START),
         Col("Date de fin de contrat", "end_date", "date", END + ["datefincontrat", "datedefindecontrat"]),
         *LIFECYCLE_COLS,
@@ -214,7 +235,11 @@ CONTRATS = Sheet(
     "CONTRACT",
     [
         Col("Référence contrat", "reference", aliases=["referencecontrat", "refcontrat", "contrat", "ncontrat"] + REF),
-        Col("Référence marché", "market_ref", aliases=["referencemarche", "refmarche", "marche", "nmarche"]),
+        Col(
+            "Référence marché",
+            "market_ref",
+            aliases=["referencemarche", "refmarche", "marche", "nmarche", "referencemarchebc", "refmarchebc"],
+        ),
         Col("Fournisseur", "vendor", "vendor", VENDOR + ["prestataire", "titulaire"]),
         Col("Contact", "contact_person", aliases=["contact", "contactfournisseur", "interlocuteur"]),
         Col("Email support", "email_support", aliases=["emailsupport", "email", "mail", "courriel"]),
@@ -229,7 +254,7 @@ CONTRATS = Sheet(
             "Préavis (jours)",
             "notice_period_days",
             "int",
-            ["preavisjours", "preavis", "delaidepreavis", "delaipreavis", "noticeperiod"],
+            ["preavisjours", "preavis", "delaidepreavis", "delaipreavis", "noticeperiod", "preaviscontractuel"],
         ),
         Col(
             "Date limite de dénonciation",
@@ -261,7 +286,7 @@ PLANNING = Sheet(
         Col("Priorité", "priority", "computed"),
         Col("Responsable", "owner", "computed"),
         Col("Statut", "status", "computed"),
-        Col("Budget renouvellement (€)", "budget", "computed"),
+        Col("Budget renouvellement", "budget", "computed"),
         Col("Plan d'action", "action_plan", "computed"),
     ],
     importable=False,

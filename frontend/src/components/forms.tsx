@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { api } from "../api";
-import { CATEGORY_LABELS, CERT_TYPES, CONTRACT_TYPES, CRITICALITIES, ENVIRONMENTS, LICENSE_TYPES } from "../format";
+import { CATEGORY_LABELS, CERT_TYPES, CURRENCY, CONTRACT_TYPES, CRITICALITIES, ENVIRONMENTS, LICENSE_TYPES } from "../format";
 import { useReferenceData } from "../hooks";
 import type { Asset, Assignment, Category, Contract, Vendor } from "../types";
 import { Field, useToast } from "./ui";
@@ -234,10 +234,10 @@ export function AssetForm({ asset, category, onSaved, onCancel }: { asset?: Asse
           <input className="input" type="date" {...bind("end_date")} />
         </Field>
         <div />
-        <Field label="Coût annuel (€)">
+        <Field label="Coût annuel">
           <input className="input" type="number" min={0} step="0.01" {...bind("annual_cost")} />
         </Field>
-        <Field label="Budget estimé (€)">
+        <Field label="Budget estimé">
           <input className="input" type="number" min={0} step="0.01" {...bind("budget_estimated")} />
         </Field>
       </Section>
@@ -258,7 +258,7 @@ const CONTRACT_KEYS = ["reference", "market_ref", "vendor_id", "type", "scope", 
 export function ContractForm({ contract, onSaved, onCancel }: { contract?: Contract | null; onSaved: () => void; onCancel: () => void }) {
   const toast = useToast();
   const { vendors } = useReferenceData();
-  const { values, bind } = useForm(toValues(contract ?? { currency: "EUR", status: "Actif" }, CONTRACT_KEYS));
+  const { values, bind } = useForm(toValues(contract ?? { currency: CURRENCY, status: "Actif" }, CONTRACT_KEYS));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async (e: FormEvent) => {
