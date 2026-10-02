@@ -1,0 +1,64 @@
+name: suivi-licences
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-suivi_licences}
+      POSTGRES_USER: ${POSTGRES_USER:-suivi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suivi}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-suivi} -d ${POSTGRES_DB:-suivi_licences}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [suivi]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-suivi}:${POSTGRES_PASSWORD:-suivi}@postgres:5432/${POSTGRES_DB:-suivi_licences}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./data:/data:ro
+    networks: [suivi]
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks: [suivi]
+
+  # Debug uniquement : exposé sur la boucle locale, ne pas publier en production.
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    # Écoute IPv4 explicite (l'image écoute sur [::] par défaut, absent sur certains hôtes)
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "/var/www/html"]
+    depends_on: [postgres]
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
+    networks: [suivi]
+
+volumes:
+  pgdata:
+
+networks:
+  suivi:
