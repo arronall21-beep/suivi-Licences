@@ -1,4 +1,4 @@
-# Suivi Licences SI
+# Suivi Licences SI — Gestion du Patrimoine SI (V1.1)
 
 Application web de **gestion, suivi et pilotage** des licences logicielles, certificats, matériels, applications et contrats fournisseurs du SI.
 Le fichier métier `Suivi_Licence.xlsx` sert de source de référence : il est importé en base PostgreSQL, enrichi dans l'application, puis ré-exporté dans le même format.
@@ -16,7 +16,10 @@ Le fichier métier `Suivi_Licence.xlsx` sert de source de référence : il est i
 | **Renouvellements** | Planning mensuel unifié actifs + contrats, horizons de 30 j à 24 mois, priorité P1/P2/P3, budget. |
 | **Alertes** | Job APScheduler quotidien. Seuils J-90 / J-60 / J-30 / J-7, plus les éléments expirés. Email de synthèse via SMTP. Historique anti-doublon : une notification par élément, seuil et échéance. Bouton « Lancer le contrôle maintenant ». |
 | **Export Excel** | Les 7 onglets métier (`Licences_Logicielles`, `Certificats`, `Materiels`, `Applications`, `Contrats_Fournisseurs`, `Planning_Renouvellement`, `Dashboard`). Dates JJ/MM/AAAA, statuts colorés, fichier ré-importable. |
-| **Sécurité** | JWT, mots de passe hachés (bcrypt), rôles **ADMIN** (écriture) et **VIEWER** (lecture), CORS, validation Pydantic, limite de taille d'upload, gestion d'erreurs centralisée. |
+| **Administration (V1.1)** | Utilisateurs et rôles **ADMIN / MANAGER / VIEWER** (RBAC vérifié côté serveur), paramètres généraux (organisation, devise, fuseau, seuils), **SMTP configurable depuis l'interface** (mot de passe chiffré, tests), configuration des alertes, journal d'audit, notifications internes, état du système et de la sauvegarde. Voir [docs/ADMIN.md](docs/ADMIN.md). |
+| **Références automatiques** | `LIC-001`, `CERT-001`, `MAT-001`, `APP-001`, `CTR-001`, `VEN-001` générées côté serveur par séquences PostgreSQL. |
+| **Charte SBEE** | Design system centralisé (`frontend/src/theme`, `components/ui`), logo configurable sans modifier les composants. |
+| **Sécurité** | JWT à durée limitée et invalidable immédiatement, mots de passe hachés (bcrypt) avec politique minimale, limitation des échecs de connexion, secrets chiffrés en base, CORS, validation Pydantic, limite de taille d'upload, erreurs centralisées. |
 
 ## Architecture
 
@@ -68,7 +71,10 @@ Les migrations Alembic s'appliquent automatiquement au démarrage du backend.
 Comptes créés au premier lancement (à changer dans `.env`) :
 
 - `admin@example.com` / `admin123` : administrateur
+- `manager@example.com` / `manager123` : gestionnaire (écriture des données métier, sans administration)
 - `viewer@example.com` / `viewer123` : lecture seule
+
+Ensuite, gérer les comptes depuis **Administration → Utilisateurs** (rôles, désactivation, réinitialisation).
 
 > Adminer n'est exposé que sur `127.0.0.1`. Ne pas le publier en production : retirer le service ou le placer derrière un accès restreint.
 
@@ -78,13 +84,16 @@ Comptes créés au premier lancement (à changer dans `.env`) :
 |---|---|
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Base PostgreSQL |
 | `SECRET_KEY` | Clé de signature JWT (**obligatoire en production**) |
+| `SETTINGS_ENCRYPTION_KEY` | Clé de chiffrement des secrets en base (mot de passe SMTP) ; vide = dérivée de `SECRET_KEY` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Durée de session |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `VIEWER_EMAIL`, `VIEWER_PASSWORD` | Comptes initiaux |
+| `ADMIN_*`, `MANAGER_*`, `VIEWER_*` (`EMAIL`, `PASSWORD`) | Comptes initiaux (créés s'ils n'existent pas) : **à changer** |
+| `ORGANIZATION_NAME`, `APPLICATION_NAME`, `CURRENCY`, `DEFAULT_TIMEZONE`, `CRITICAL_DAYS`, `ALERT_DAYS` | Valeurs de départ des paramètres généraux (ensuite modifiables dans Administration → Paramètres) |
 | `CORS_ORIGINS` | Origines autorisées, séparées par des virgules |
 | `MAX_UPLOAD_MB` | Taille maximale du fichier Excel (10 Mo par défaut) |
-| `CURRENCY`, `CURRENCY_LABEL` | Devise des montants (`XOF` / `FCFA` par défaut) pour l'export Excel ; côté interface : variable de build `VITE_CURRENCY` (défaut `XOF`) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS` | Envoi des emails d'alerte |
-| `ALERT_RECIPIENTS` | Destinataires des alertes, séparés par des virgules |
+| `VITE_CURRENCY`, `VITE_LOGO_URL`, `VITE_LOGO_DARK_URL` | Variables de build du frontend : logo (voir `frontend/public/branding/README.md`) |
+| `BACKUP_DIR` | Répertoire des sauvegardes lu par Administration → Système (`./backups` monté dans le conteneur) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`, `SMTP_SECURITY` | Valeurs de repli pour l'envoi des alertes : la configuration saisie dans **Administration → SMTP** est prioritaire |
+| `ALERT_RECIPIENTS` | Adresses personnalisées de départ pour les alertes (ensuite : Administration → Paramètres) |
 | `ALERT_THRESHOLDS` | Seuils en jours (`90,60,30,7`) |
 | `ALERT_HOUR`, `SCHEDULER_ENABLED` | Heure du job quotidien (Europe/Paris), activation |
 | `FRONTEND_PORT`, `BACKEND_PORT`, `ADMINER_PORT` | Ports exposés |
@@ -137,7 +146,9 @@ Documentation interactive : `/api/docs`.
 
 ## Configuration SMTP
 
-Renseigner `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, éventuellement `SMTP_USERNAME`/`SMTP_PASSWORD`, et `ALERT_RECIPIENTS`. Sans SMTP, les alertes sont tout de même calculées et tracées avec le statut `NON_ENVOYE`. Le job tourne chaque jour à `ALERT_HOUR` ; un administrateur peut aussi le déclencher depuis la page **Alertes**.
+Depuis l'interface (recommandé) : **Administration → SMTP** (serveur, port, sécurité NONE / STARTTLS / SSL-TLS, utilisateur, mot de passe, expéditeur), avec **Tester la connexion** et **Envoyer un email de test**. Le mot de passe est chiffré en base et jamais renvoyé par l'API. Destinataires et seuils : **Administration → Paramètres → Alertes d'échéance**.
+
+Les variables `SMTP_*` du `.env` ne servent que de valeur de repli. Sans SMTP, l'interface affiche « SMTP non configuré » ; les alertes sont tout de même calculées et tracées (`NON_ENVOYE`) et visibles dans les notifications. Le contrôle tourne chaque jour à `ALERT_HOUR` (fuseau des paramètres), au démarrage du backend, et à la demande depuis **Notifications → Alertes d'échéance**.
 
 ## Tests
 
@@ -156,7 +167,7 @@ docker compose exec -e DATABASE_URL=postgresql+asyncpg://suivi:${POSTGRES_PASSWO
 cd frontend && npm ci && npm run build
 ```
 
-Couverture des tests : import valide, onglet manquant, date invalide, doublons, ré-import (UPSERT), aller-retour export → import ; lifecycle OK / ALERTE / CRITIQUE / EXPIRÉ et seuils d'alerte ; affectations (valide, sur-allocation refusée, quantité disponible, taux d'utilisation) ; CRUD, droits ADMIN/VIEWER, dashboard, renouvellements, alertes sans doublon, health.
+Couverture des tests (backend : 89 tests) : références automatiques (format, unicité, suppression, concurrence, import), utilisateurs et rôles (création, désactivation immédiate, dernier administrateur, politique de mot de passe, limitation des échecs), matrice RBAC rôle × endpoint, paramètres généraux et seuils dynamiques, SMTP (chiffrement, secret jamais exposé, tests de connexion et d'email), alertes configurables et idempotentes, audit, notifications internes, historique d'import, exports par périmètre, top des risques, recherche, système ; puis, historiquement : import valide, onglet manquant, date invalide, doublons, ré-import (UPSERT), aller-retour export → import ; lifecycle OK / ALERTE / CRITIQUE / EXPIRÉ et seuils d'alerte ; affectations (valide, sur-allocation refusée, quantité disponible, taux d'utilisation) ; CRUD, droits ADMIN/VIEWER, dashboard, renouvellements, alertes sans doublon, health.
 
 ## Développement local (sans Docker)
 
@@ -171,4 +182,4 @@ alembic upgrade head && uvicorn app.main:app --reload
 cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
-Scénario de démonstration pas à pas : [docs/DEMO.md](docs/DEMO.md).
+Scénario de démonstration pas à pas : [docs/DEMO.md](docs/DEMO.md). Guide d'administration (rôles, SMTP, audit, sauvegarde, logo) : [docs/ADMIN.md](docs/ADMIN.md).
