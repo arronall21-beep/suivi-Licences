@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
+from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
 from app.core import lifecycle
 from app.models import Asset, Contract, Vendor
 from app.schemas import AssetDetailOut, AssetIn, AssetPage
@@ -129,7 +129,7 @@ async def _validate(db, body: AssetIn, asset: Asset | None = None):
 
 
 @router.post("", response_model=AssetDetailOut, status_code=201)
-async def create_asset(body: AssetIn, db: DB, _: AdminUser):
+async def create_asset(body: AssetIn, db: DB, _: WriterUser):
     await _validate(db, body)
     data = body.model_dump()
     if not data["reference"]:
@@ -144,7 +144,7 @@ async def create_asset(body: AssetIn, db: DB, _: AdminUser):
 
 
 @router.put("/{asset_id}", response_model=AssetDetailOut)
-async def update_asset(asset_id: int, body: AssetIn, db: DB, _: AdminUser):
+async def update_asset(asset_id: int, body: AssetIn, db: DB, _: WriterUser):
     a = await get_or_404(db, Asset, asset_id)
     await _validate(db, body, a)
     for k, v in body.model_dump().items():
@@ -160,7 +160,7 @@ async def update_asset(asset_id: int, body: AssetIn, db: DB, _: AdminUser):
 
 
 @router.delete("/{asset_id}", status_code=204)
-async def delete_asset(asset_id: int, db: DB, _: AdminUser):
+async def delete_asset(asset_id: int, db: DB, _: DeleterUser):
     a = await get_or_404(db, Asset, asset_id)
     await db.delete(a)
     await db.commit()

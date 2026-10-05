@@ -47,9 +47,15 @@ class User(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     full_name: Mapped[str | None] = mapped_column(String(255))
+    first_name: Mapped[str | None] = mapped_column(String(120))
+    last_name: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(50))
+    department: Mapped[str | None] = mapped_column(String(255))
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="VIEWER")
     is_active: Mapped[bool] = mapped_column(default=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Vendor(TimestampMixin, Base):
@@ -249,3 +255,29 @@ class ImportLog(Base):
     report: Mapped[str | None] = mapped_column(Text)  # JSON
     imported_by: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AppNotification(Base):
+    """Notification interne (cloche de l'interface). Diffusée à tous les utilisateurs de l'audience."""
+
+    __tablename__ = "app_notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    priority: Mapped[str] = mapped_column(String(10), default="MEDIUM")  # HIGH / MEDIUM / LOW
+    title: Mapped[str] = mapped_column(String(255))
+    message: Mapped[str | None] = mapped_column(Text)
+    link: Mapped[str | None] = mapped_column(String(500))
+    entity_type: Mapped[str | None] = mapped_column(String(20))
+    entity_id: Mapped[int | None] = mapped_column(Integer)
+    audience: Mapped[str] = mapped_column(String(10), default="ALL")  # ALL / ADMIN
+    dedupe_key: Mapped[str | None] = mapped_column(String(200), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class AppNotificationRead(Base):
+    __tablename__ = "app_notification_reads"
+
+    notification_id: Mapped[int] = mapped_column(ForeignKey("app_notifications.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

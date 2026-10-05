@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import or_, select
 
-from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
+from app.api.deps import DB, CurrentUser, WriterUser, get_or_404
 from app.models import Asset, LicenseAssignment
 from app.schemas import AssignmentIn, AssignmentOut
 from app.services.licenses import AllocationError, check_allocation
@@ -29,7 +29,7 @@ async def list_assignments(db: DB, _: CurrentUser, asset_id: int | None = None, 
 
 
 @router.post("", response_model=AssignmentOut, status_code=201)
-async def create_assignment(body: AssignmentIn, db: DB, _: AdminUser):
+async def create_assignment(body: AssignmentIn, db: DB, _: WriterUser):
     if not (body.assigned_to_user or body.assigned_to_device or body.assigned_to_department):
         raise HTTPException(422, "Indiquer un utilisateur, un poste ou une direction")
     try:
@@ -44,7 +44,7 @@ async def create_assignment(body: AssignmentIn, db: DB, _: AdminUser):
 
 
 @router.put("/{assignment_id}", response_model=AssignmentOut)
-async def update_assignment(assignment_id: int, body: AssignmentIn, db: DB, _: AdminUser):
+async def update_assignment(assignment_id: int, body: AssignmentIn, db: DB, _: WriterUser):
     a = await get_or_404(db, LicenseAssignment, assignment_id)
     try:
         await check_allocation(db, body.asset_id, body.quantity, exclude_assignment_id=assignment_id)
@@ -59,7 +59,7 @@ async def update_assignment(assignment_id: int, body: AssignmentIn, db: DB, _: A
 
 
 @router.delete("/{assignment_id}", status_code=204)
-async def delete_assignment(assignment_id: int, db: DB, _: AdminUser):
+async def delete_assignment(assignment_id: int, db: DB, _: WriterUser):
     a = await get_or_404(db, LicenseAssignment, assignment_id)
     await db.delete(a)
     await db.commit()

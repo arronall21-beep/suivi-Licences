@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.password_policy import validate_password
+
 Category = Literal["LICENCE", "CERTIFICAT", "MATERIEL", "APPLICATION"]
 
 
@@ -30,18 +32,72 @@ class TokenOut(BaseModel):
     email: str
 
 
+Role = Literal["ADMIN", "MANAGER", "VIEWER"]
+
+
 class UserOut(ORM):
     id: int
     email: str
+    first_name: str | None = None
+    last_name: str | None = None
     full_name: str | None = None
+    phone: str | None = None
+    department: str | None = None
     role: str
+    is_active: bool
+    created_at: datetime
+    last_login_at: datetime | None = None
 
 
-class UserCreate(BaseModel):
+class MeOut(UserOut):
+    permissions: list[str]
+
+
+class UserBase(BaseModel):
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    full_name: str | None = None
-    password: str = Field(min_length=6)
-    role: Literal["ADMIN", "VIEWER"] = "VIEWER"
+    phone: str | None = Field(default=None, max_length=50)
+    department: str | None = Field(default=None, max_length=255)
+    role: Role = "VIEWER"
+
+    _s = field_validator("first_name", "last_name", "phone", "department", mode="before")(classmethod(lambda cls, v: _strip(v)))
+
+
+class UserCreate(UserBase):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _check_password(cls, v: str, info) -> str:
+        return validate_password(v, info.data.get("email"))
+
+
+class UserUpdate(UserBase):
+    pass
+
+
+class PasswordReset(BaseModel):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _check_password(cls, v: str) -> str:
+        return validate_password(v)
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _check_password(cls, v: str) -> str:
+        return validate_password(v)
+
+
+class ForgotPassword(BaseModel):
+    email: str
 
 
 # ---------- Vendor ----------

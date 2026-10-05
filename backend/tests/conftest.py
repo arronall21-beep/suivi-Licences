@@ -8,9 +8,10 @@ import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+from app.core import ratelimit  # noqa: E402
 from app.database import Base, SessionLocal, engine  # noqa: E402
-from app.models import REFERENCE_SEQUENCES  # noqa: E402
 from app.main import app, ensure_default_users  # noqa: E402
+from app.models import REFERENCE_SEQUENCES  # noqa: E402
 
 _schema_ready = False
 
@@ -28,6 +29,7 @@ async def clean_db():
         for seq in REFERENCE_SEQUENCES.values():
             await conn.execute(text(f"ALTER SEQUENCE {seq.name} RESTART WITH 1"))
     await ensure_default_users()
+    ratelimit.clear_all()
     yield
 
 
@@ -37,7 +39,7 @@ async def db():
         yield session
 
 
-async def _client(email, password):
+async def make_client(email, password):
     c = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     r = await c.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert r.status_code == 200, r.text
@@ -47,14 +49,21 @@ async def _client(email, password):
 
 @pytest.fixture
 async def admin():
-    c = await _client("admin@example.com", "admin123")
+    c = await make_client("admin@example.com", "admin123")
+    yield c
+    await c.aclose()
+
+
+@pytest.fixture
+async def manager():
+    c = await make_client("manager@example.com", "manager123")
     yield c
     await c.aclose()
 
 
 @pytest.fixture
 async def viewer():
-    c = await _client("viewer@example.com", "viewer123")
+    c = await make_client("viewer@example.com", "viewer123")
     yield c
     await c.aclose()
 

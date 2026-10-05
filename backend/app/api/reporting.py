@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy import select
 
-from app.api.deps import DB, AdminUser, CurrentUser
+from app.api.deps import DB, AdminUser, CurrentUser, ImporterUser
 from app.core.config import settings
 from app.models import ImportLog, Notification
 from app.schemas import NotificationOut
@@ -41,7 +41,7 @@ async def renewals(
 
 
 @router.post("/import/excel", tags=["import-export"])
-async def import_excel(file: UploadFile, db: DB, user: AdminUser):
+async def import_excel(file: UploadFile, db: DB, user: ImporterUser):
     if not (file.filename or "").lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(415, "Format attendu : fichier Excel .xlsx")
     max_bytes = settings.max_upload_mb * 1024 * 1024

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
+from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
 from app.models import Asset, Contract, Vendor
 from app.schemas import VendorIn, VendorOut
 from app.services.references import next_reference
@@ -24,7 +24,7 @@ async def get_vendor(vendor_id: int, db: DB, _: CurrentUser):
 
 
 @router.post("", response_model=VendorOut, status_code=201)
-async def create_vendor(body: VendorIn, db: DB, _: AdminUser):
+async def create_vendor(body: VendorIn, db: DB, _: WriterUser):
     v = Vendor(**body.model_dump(), reference=await next_reference(db, "VENDOR"))
     db.add(v)
     try:
@@ -36,7 +36,7 @@ async def create_vendor(body: VendorIn, db: DB, _: AdminUser):
 
 
 @router.put("/{vendor_id}", response_model=VendorOut)
-async def update_vendor(vendor_id: int, body: VendorIn, db: DB, _: AdminUser):
+async def update_vendor(vendor_id: int, body: VendorIn, db: DB, _: WriterUser):
     v = await get_or_404(db, Vendor, vendor_id)
     for k, val in body.model_dump().items():
         setattr(v, k, val)
@@ -49,7 +49,7 @@ async def update_vendor(vendor_id: int, body: VendorIn, db: DB, _: AdminUser):
 
 
 @router.delete("/{vendor_id}", status_code=204)
-async def delete_vendor(vendor_id: int, db: DB, _: AdminUser):
+async def delete_vendor(vendor_id: int, db: DB, _: DeleterUser):
     v = await get_or_404(db, Vendor, vendor_id)
     used = (await db.execute(select(func.count()).select_from(Asset).where(Asset.vendor_id == vendor_id))).scalar_one()
     used += (await db.execute(select(func.count()).select_from(Contract).where(Contract.vendor_id == vendor_id))).scalar_one()

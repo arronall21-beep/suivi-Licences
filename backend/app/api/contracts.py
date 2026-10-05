@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
+from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
 from app.models import Contract, Vendor
 from app.schemas import ContractIn, ContractOut
 from app.services.references import next_reference
@@ -46,7 +46,7 @@ async def get_contract(contract_id: int, db: DB, _: CurrentUser):
 
 
 @router.post("", response_model=ContractOut, status_code=201)
-async def create_contract(body: ContractIn, db: DB, _: AdminUser):
+async def create_contract(body: ContractIn, db: DB, _: WriterUser):
     await _check_vendor(db, body.vendor_id)
     data = body.model_dump()
     if not data["reference"]:
@@ -61,7 +61,7 @@ async def create_contract(body: ContractIn, db: DB, _: AdminUser):
 
 
 @router.put("/{contract_id}", response_model=ContractOut)
-async def update_contract(contract_id: int, body: ContractIn, db: DB, _: AdminUser):
+async def update_contract(contract_id: int, body: ContractIn, db: DB, _: WriterUser):
     c = await get_or_404(db, Contract, contract_id)
     await _check_vendor(db, body.vendor_id)
     for k, v in body.model_dump().items():
@@ -77,7 +77,7 @@ async def update_contract(contract_id: int, body: ContractIn, db: DB, _: AdminUs
 
 
 @router.delete("/{contract_id}", status_code=204)
-async def delete_contract(contract_id: int, db: DB, _: AdminUser):
+async def delete_contract(contract_id: int, db: DB, _: DeleterUser):
     c = await get_or_404(db, Contract, contract_id)
     await db.delete(c)
     await db.commit()

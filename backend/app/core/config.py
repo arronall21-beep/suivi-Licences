@@ -12,11 +12,13 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://suivi:suivi@localhost:5432/suivi_licences"
 
     secret_key: str = "change-me-in-env"
-    access_token_expire_minutes: int = 60 * 12
+    access_token_expire_minutes: int = 60 * 8
     jwt_algorithm: str = "HS256"
 
     admin_email: str = "admin@example.com"
     admin_password: str = "admin123"
+    manager_email: str = "manager@example.com"
+    manager_password: str = "manager123"
     viewer_email: str = "viewer@example.com"
     viewer_password: str = "viewer123"
 

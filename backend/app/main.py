@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
-from app.api import assets, assignments, auth, contracts, reporting, vendors
+from app.api import assets, assignments, auth, contracts, inbox, reporting, users, vendors
 from app.core.config import settings
 from app.core.security import hash_password
 from app.database import SessionLocal
@@ -19,16 +19,27 @@ log = logging.getLogger("app")
 
 
 async def ensure_default_users():
+    seeds = (
+        (settings.admin_email, settings.admin_password, "ADMIN", "Admin", "Système"),
+        (settings.manager_email, settings.manager_password, "MANAGER", "Gestionnaire", "SI"),
+        (settings.viewer_email, settings.viewer_password, "VIEWER", "Lecture", "Seule"),
+    )
     async with SessionLocal() as db:
-        for email, pwd, role in (
-            (settings.admin_email, settings.admin_password, "ADMIN"),
-            (settings.viewer_email, settings.viewer_password, "VIEWER"),
-        ):
+        for email, pwd, role, first, last in seeds:
             if not email or not pwd:
                 continue
             exists = (await db.execute(select(User).where(User.email == email.lower()))).scalar_one_or_none()
             if exists is None:
-                db.add(User(email=email.lower(), full_name=role.title(), role=role, hashed_password=hash_password(pwd)))
+                db.add(
+                    User(
+                        email=email.lower(),
+                        first_name=first,
+                        last_name=last,
+                        full_name=f"{first} {last}",
+                        role=role,
+                        hashed_password=hash_password(pwd),
+                    )
+                )
                 log.info("Utilisateur %s (%s) créé", email, role)
         await db.commit()
 
@@ -78,6 +89,15 @@ async def health():
     return {"status": "ok" if db_ok else "degraded", "database": "ok" if db_ok else "unreachable", "version": app.version}
 
 
-for r in (auth.router, vendors.router, contracts.router, assets.router, assignments.router, reporting.router):
+for r in (
+    auth.router,
+    users.router,
+    inbox.router,
+    vendors.router,
+    contracts.router,
+    assets.router,
+    assignments.router,
+    reporting.router,
+):
     api.include_router(r)
 app.include_router(api)

@@ -52,7 +52,9 @@ async def test_update_keeps_reference(admin):
 
 
 async def test_concurrent_creations_are_unique(admin):
-    results = await asyncio.gather(*[admin.post("/api/v1/assets", json={"category": "LICENCE", "name": f"L{i}"}) for i in range(20)])
+    results = await asyncio.gather(
+        *[admin.post("/api/v1/assets", json={"category": "LICENCE", "name": f"L{i}"}) for i in range(20)]
+    )
     assert all(r.status_code == 201 for r in results), [r.text for r in results if r.status_code != 201]
     refs = [r.json()["reference"] for r in results]
     assert len(set(refs)) == 20
@@ -78,7 +80,9 @@ async def upload(admin, content):
 
 
 async def test_import_keeps_generates_and_ignores_invalid(admin):
-    content = workbook([["LIC-010", "Explicite", 5], [None, "Sans référence", 3], [None, None, 9], ["LIC-001", "Autre explicite", 1]])
+    content = workbook(
+        [["LIC-010", "Explicite", 5], [None, "Sans référence", 3], [None, None, 9], ["LIC-001", "Autre explicite", 1]]
+    )
     rep = await upload(admin, content)
     assert rep["rows_imported"] == 3 and rep["errors_count"] == 1
     refs = {a["name"]: a["reference"] for a in (await admin.get("/api/v1/assets", params={"size": 50})).json()["items"]}
