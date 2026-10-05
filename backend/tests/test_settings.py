@@ -299,3 +299,37 @@ async def test_secret_never_in_settings_listing(admin, fake_smtp):
     assert SECRET not in (await admin.get(f"{API}/config")).text
     # make_client reste utilisable après tous ces changements de configuration
     assert (await make_client("admin@example.com", "admin123")) is not None
+
+
+# ---------- Passe finale : scheduler et fuite de secrets ----------
+async def test_scheduler_job_uses_database_settings(admin, fake_smtp):
+    """Le job quotidien (APScheduler) lit la configuration SMTP et les destinataires enregistrés en base."""
+    from app.jobs.scheduler import daily_alerts_job
+
+    await admin.put(f"{API}/admin/settings/smtp", json=SMTP_FORM)
+    alerts = {
+        "thresholds": [{"days": 30, "enabled": True}],
+        "notify_expired": True,
+        "recipients": {"notify_owner": False, "notify_admin": False, "custom": ["planning@sbee.bj"]},
+    }
+    await admin.put(f"{API}/admin/settings/alerts", json=alerts)
+    await admin.post(f"{API}/assets", json={"category": "LICENCE", "name": "Licence job", "end_date": iso(10)})
+
+    await daily_alerts_job()  # exactement ce que déclenche le scheduler chaque jour
+
+    sent = [m for i in fake_smtp.instances for m in i.sent]
+    assert [m["To"] for m in sent] == ["planning@sbee.bj"] and "Licence job" in sent[0].get_content()
+    assert any(call == ("login", "alertes@sbee.bj", SECRET) for i in fake_smtp.instances for call in i.calls)
+    await daily_alerts_job()  # second passage : idempotent
+    assert len([m for i in fake_smtp.instances for m in i.sent]) == 1
+
+
+async def test_smtp_secret_never_logged(admin, fake_smtp, caplog):
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    await admin.put(f"{API}/admin/settings/smtp", json=SMTP_FORM)
+    fake_smtp.fail_login = True
+    await admin.post(f"{API}/admin/settings/smtp/test-connection", json=SMTP_FORM)  # échec d'authentification journalisé
+    await admin.post(f"{API}/admin/settings/smtp/test-email", json=SMTP_FORM)
+    assert SECRET not in caplog.text
