@@ -6,6 +6,7 @@ from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
 from app.core import lifecycle
 from app.models import Asset, Contract, Vendor
 from app.schemas import AssetDetailOut, AssetIn, AssetPage
+from app.services.references import next_reference
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -130,7 +131,10 @@ async def _validate(db, body: AssetIn, asset: Asset | None = None):
 @router.post("", response_model=AssetDetailOut, status_code=201)
 async def create_asset(body: AssetIn, db: DB, _: AdminUser):
     await _validate(db, body)
-    a = Asset(**body.model_dump())
+    data = body.model_dump()
+    if not data["reference"]:
+        data["reference"] = await next_reference(db, body.category)
+    a = Asset(**data)
     db.add(a)
     try:
         await db.commit()
@@ -144,6 +148,8 @@ async def update_asset(asset_id: int, body: AssetIn, db: DB, _: AdminUser):
     a = await get_or_404(db, Asset, asset_id)
     await _validate(db, body, a)
     for k, v in body.model_dump().items():
+        if k == "reference" and not v:
+            continue  # la référence existante est conservée
         setattr(a, k, v)
     try:
         await db.commit()

@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
 from app.models import Contract, Vendor
 from app.schemas import ContractIn, ContractOut
+from app.services.references import next_reference
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -47,7 +48,10 @@ async def get_contract(contract_id: int, db: DB, _: CurrentUser):
 @router.post("", response_model=ContractOut, status_code=201)
 async def create_contract(body: ContractIn, db: DB, _: AdminUser):
     await _check_vendor(db, body.vendor_id)
-    c = Contract(**body.model_dump())
+    data = body.model_dump()
+    if not data["reference"]:
+        data["reference"] = await next_reference(db, "CONTRACT")
+    c = Contract(**data)
     db.add(c)
     try:
         await db.commit()
@@ -61,6 +65,8 @@ async def update_contract(contract_id: int, body: ContractIn, db: DB, _: AdminUs
     c = await get_or_404(db, Contract, contract_id)
     await _check_vendor(db, body.vendor_id)
     for k, v in body.model_dump().items():
+        if k == "reference" and not v:
+            continue
         setattr(c, k, v)
     try:
         await db.commit()

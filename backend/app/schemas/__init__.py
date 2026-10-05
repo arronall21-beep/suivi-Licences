@@ -61,6 +61,7 @@ class VendorIn(VendorBase):
 
 class VendorOut(VendorBase, ORM):
     id: int
+    reference: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -85,7 +86,8 @@ class ContractBase(BaseModel):
 
 
 class ContractIn(ContractBase):
-    pass
+    # Générée automatiquement (CTR-001…) si absente
+    reference: str | None = Field(default=None, max_length=100)
 
 
 class ContractOut(ContractBase, ORM):
@@ -167,7 +169,8 @@ class AssetBase(BaseModel):
 
 
 class AssetIn(AssetBase):
-    pass
+    # Générée automatiquement (LIC-001, CERT-001…) si absente
+    reference: str | None = Field(default=None, max_length=100)
 
 
 class AssetOut(AssetBase, ORM):

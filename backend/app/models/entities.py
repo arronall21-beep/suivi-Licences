@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    Sequence,
     String,
     Text,
     UniqueConstraint,
@@ -18,7 +19,21 @@ from app.core.config import settings
 from app.database import Base
 
 CATEGORIES = ["LICENCE", "CERTIFICAT", "MATERIEL", "APPLICATION"]
-ROLES = ["ADMIN", "VIEWER"]
+ROLES = ["ADMIN", "MANAGER", "VIEWER"]
+
+# Séquences PostgreSQL des références automatiques (jamais count()+1 : pas de collision
+# après suppression ni en cas de créations simultanées).
+REFERENCE_PREFIXES = {
+    "LICENCE": "LIC",
+    "CERTIFICAT": "CERT",
+    "MATERIEL": "MAT",
+    "APPLICATION": "APP",
+    "CONTRACT": "CTR",
+    "VENDOR": "VEN",
+}
+REFERENCE_SEQUENCES = {
+    kind: Sequence(f"ref_{prefix.lower()}_seq", metadata=Base.metadata) for kind, prefix in REFERENCE_PREFIXES.items()
+}
 
 
 class TimestampMixin:
@@ -41,6 +56,7 @@ class Vendor(TimestampMixin, Base):
     __tablename__ = "vendors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    reference: Mapped[str | None] = mapped_column(String(100), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     contact_person: Mapped[str | None] = mapped_column(String(255))
     email_support: Mapped[str | None] = mapped_column(String(255))

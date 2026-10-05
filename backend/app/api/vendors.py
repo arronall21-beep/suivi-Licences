@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
 from app.models import Asset, Contract, Vendor
 from app.schemas import VendorIn, VendorOut
+from app.services.references import next_reference
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/vendors", tags=["vendors"])
 async def list_vendors(db: DB, _: CurrentUser, q: str | None = None):
     stmt = select(Vendor).order_by(func.lower(Vendor.name))
     if q:
-        stmt = stmt.where(Vendor.name.ilike(f"%{q}%"))
+        stmt = stmt.where(or_(Vendor.name.ilike(f"%{q}%"), Vendor.reference.ilike(f"%{q}%")))
     return (await db.execute(stmt)).scalars().all()
 
 
@@ -24,7 +25,7 @@ async def get_vendor(vendor_id: int, db: DB, _: CurrentUser):
 
 @router.post("", response_model=VendorOut, status_code=201)
 async def create_vendor(body: VendorIn, db: DB, _: AdminUser):
-    v = Vendor(**body.model_dump())
+    v = Vendor(**body.model_dump(), reference=await next_reference(db, "VENDOR"))
     db.add(v)
     try:
         await db.commit()

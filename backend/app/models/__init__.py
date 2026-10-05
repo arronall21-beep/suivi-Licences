@@ -1,5 +1,7 @@
 from app.models.entities import (
     CATEGORIES,
+    REFERENCE_PREFIXES,
+    REFERENCE_SEQUENCES,
     ROLES,
     Asset,
     Contract,
@@ -12,6 +14,8 @@ from app.models.entities import (
 
 __all__ = [
     "CATEGORIES",
+    "REFERENCE_PREFIXES",
+    "REFERENCE_SEQUENCES",
     "ROLES",
     "Asset",
     "Contract",

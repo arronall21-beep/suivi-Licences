@@ -2,20 +2,19 @@
 
 import io
 import json
-import re
 from dataclasses import dataclass, field
 from datetime import date
 
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Asset, Contract, ImportLog, LicenseAssignment, Vendor
 from app.services import excel_layout as L
-from app.services.parsing import PARSERS, ParseError
+from app.services.parsing import PARSERS, ParseError, parse_str
+from app.services.references import next_reference, sync_sequence
 
-PREFIX = {"LICENCE": "LIC", "CERTIFICAT": "CERT", "MATERIEL": "MAT", "APPLICATION": "APP", "CONTRACT": "CTR"}
 HEADER_SCAN_ROWS = 15
 VENDOR_FIELDS = ("contact_person", "email_support", "phone", "website")
 MAX_LEN = {"reference": 100, "name": 255}
@@ -103,6 +102,8 @@ class Importer:
         self.report = report
         self.vendors: dict[str, Vendor] = {}
         self.contracts: dict[str, Contract] = {}
+        # Références explicites présentes dans le fichier : jamais attribuées à une ligne sans référence
+        self.reserved: dict[str, set[str]] = {}
 
     async def load_caches(self):
         for v in (await self.db.execute(select(Vendor))).scalars():
@@ -118,7 +119,7 @@ class Importer:
             return None
         v = self.vendors.get(key)
         if v is None:
-            v = Vendor(name=name[:255])
+            v = Vendor(name=name[:255], reference=await next_reference(self.db, "VENDOR"))
             self.db.add(v)
             await self.db.flush()
             self.vendors[key] = v
@@ -169,6 +170,13 @@ class Importer:
             self.report.warn(ws.title, header_idx + 1, f"colonne non reconnue « {u} » ignorée")
         formula_rows = list(ws_formulas.iter_rows(values_only=True)) if ws_formulas is not None else []
 
+        ref_idx = next((i for i, c in mapping.items() if c.key == "reference"), None)
+        if ref_idx is not None:
+            reserved = self.reserved.setdefault(sheet.category, set())
+            for r in rows[header_idx + 1 :]:
+                if ref_idx < len(r) and (v := parse_str(r[ref_idx])):
+                    reserved.add(v.strip().upper())
+
         seen: dict[str, int] = {}
         for offset, row in enumerate(rows[header_idx + 1 :], start=header_idx + 2):
             if all(v is None or (isinstance(v, str) and not v.strip()) for v in row):
@@ -194,6 +202,7 @@ class Importer:
                 stats.rows_analyzed -= 1  # ligne ne contenant que des colonnes calculées
                 continue
             ref, name = data.get("reference"), data.get("name")
+            generated = False
             if sheet.category != "CONTRACT":
                 if not ref and not name:
                     stats.skipped += 1
@@ -202,24 +211,26 @@ class Importer:
                 if not name:
                     data["name"] = name = ref
                     self.report.warn(ws.title, offset, "nom manquant : la référence est utilisée comme nom")
-                if not ref:
-                    ref = f"{PREFIX[sheet.category]}-{re.sub(r'[^A-Z0-9]+', '-', L.norm(name).upper())[:40]}"
-                    data["reference"] = ref
-                    self.report.warn(ws.title, offset, f"référence manquante : générée « {ref} »")
-            elif not ref:
-                stats.skipped += 1
-                self.report.error(ws.title, offset, "référence contrat manquante → ligne ignorée")
-                continue
+                generated = not ref
+                identity = ref or f"nom:{L.norm(name)}"
+            else:
+                # Contrat sans référence : identifiable seulement s'il porte un fournisseur, un périmètre ou un type.
+                if not ref and not (data.get("vendor") or data.get("scope") or data.get("type")):
+                    stats.skipped += 1
+                    self.report.error(ws.title, offset, "référence contrat manquante et ligne non identifiable → ligne ignorée")
+                    continue
+                generated = not ref
+                identity = ref or f"ctr:{L.norm(data.get('vendor'))}:{L.norm(data.get('scope') or data.get('type'))}"
+            data["reference"] = ref  # None si à générer au moment de l'écriture
             for k, n in MAX_LEN.items():
                 if data.get(k) and len(data[k]) > n:
                     data[k] = data[k][:n]
                     self.report.warn(ws.title, offset, f"{k} tronqué à {n} caractères")
-            dkey = ref.strip().upper()
+            dkey = identity.strip().upper()
             if dkey in seen:
                 stats.skipped += 1
-                self.report.warn(
-                    ws.title, offset, f"doublon de la référence « {ref} » (déjà présente ligne {seen[dkey]}) → ligne ignorée"
-                )
+                what = f"du nom « {name} »" if generated and sheet.category != "CONTRACT" else f"de la référence « {ref} »"
+                self.report.warn(ws.title, offset, f"doublon {what} (déjà présent ligne {seen[dkey]}) → ligne ignorée")
                 continue
             seen[dkey] = offset
             try:
@@ -228,6 +239,12 @@ class Importer:
                         created = await self.upsert_contract(data, ws.title, offset)
                     else:
                         created = await self.upsert_asset(sheet.category, data, ws.title, offset)
+                    if generated:
+                        self.report.warn(
+                            ws.title,
+                            offset,
+                            f"référence manquante : « {data['reference']} » {'générée' if created else 'déjà attribuée (ligne reconnue)'}",
+                        )
             except SQLAlchemyError as exc:
                 stats.skipped += 1
                 self.report.error(
@@ -248,6 +265,16 @@ class Importer:
             data.pop(f, None)
         if vendor is None and all(v is None for k, v in data.items() if k != "reference"):
             self.report.warn(sheet, row, "ligne incomplète : seule la référence du contrat est renseignée")
+        if not data["reference"]:
+            # Ré-import d'une ligne sans référence : on retrouve le contrat par fournisseur + périmètre/type
+            label = (data.get("scope") or data.get("type") or "").lower()
+            for existing in self.contracts.values():
+                same_vendor = (existing.vendor_id or None) == (vendor.id if vendor else None)
+                if same_vendor and (existing.scope or existing.type or "").lower() == label:
+                    data["reference"] = existing.reference
+                    break
+            else:
+                data["reference"] = await next_reference(self.db, "CONTRACT", self.reserved.get("CONTRACT"))
         key = data["reference"].strip().upper()
         c = self.contracts.get(key)
         created = c is None
@@ -269,9 +296,16 @@ class Importer:
         vendor = await self.vendor(data.pop("vendor", None))
         contract = await self.contract(data.pop("contract", None), vendor, sheet, row)
         used = data.pop("used_quantity", None)
-        existing = (
-            await self.db.execute(select(Asset).where(Asset.category == category, Asset.reference == data["reference"]))
-        ).scalar_one_or_none()
+        if data["reference"]:
+            lookup = select(Asset).where(Asset.category == category, Asset.reference == data["reference"])
+        else:
+            # Référence absente : on retrouve l'actif par son nom (ré-import idempotent), sinon on en génère une
+            lookup = select(Asset).where(Asset.category == category, func.lower(Asset.name) == data["name"].lower()).limit(1)
+        existing = (await self.db.execute(lookup)).scalar_one_or_none()
+        if existing is not None:
+            data["reference"] = existing.reference
+        elif not data["reference"]:
+            data["reference"] = await next_reference(self.db, category, self.reserved.get(category))
         created = existing is None
         asset = existing or Asset(category=category, reference=data["reference"])
         if created:
@@ -358,6 +392,9 @@ async def import_workbook(db: AsyncSession, content: bytes, filename: str, user:
                     note="onglet calculé : régénéré depuis la base, non importé",
                 )
             )
+
+    for kind in ("LICENCE", "CERTIFICAT", "MATERIEL", "APPLICATION", "CONTRACT", "VENDOR"):
+        await sync_sequence(db, kind)
 
     result = report.as_dict()
     db.add(
