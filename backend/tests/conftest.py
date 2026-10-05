@@ -3,6 +3,7 @@ import os
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://suivi:suivi@localhost:5432/suivi_test")
 os.environ["ENVIRONMENT"] = "test"
 os.environ["SCHEDULER_ENABLED"] = "false"
+os.environ["DEFAULT_TIMEZONE"] = "UTC"
 
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
@@ -12,6 +13,7 @@ from app.core import ratelimit  # noqa: E402
 from app.database import Base, SessionLocal, engine  # noqa: E402
 from app.main import app, ensure_default_users  # noqa: E402
 from app.models import REFERENCE_SEQUENCES  # noqa: E402
+from app.services import app_settings  # noqa: E402
 
 _schema_ready = False
 
@@ -29,6 +31,8 @@ async def clean_db():
         for seq in REFERENCE_SEQUENCES.values():
             await conn.execute(text(f"ALTER SEQUENCE {seq.name} RESTART WITH 1"))
     await ensure_default_users()
+    async with SessionLocal() as db:
+        await app_settings.apply_runtime(db)  # réinitialise seuils et fuseau (base vidée)
     ratelimit.clear_all()
     yield
 

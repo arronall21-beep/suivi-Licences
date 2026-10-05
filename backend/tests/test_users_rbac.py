@@ -162,6 +162,10 @@ async def test_rbac_matrix(admin, manager, viewer, anon):
         ("post", "/alerts/run", {}),
         ("get", "/users", {}),
         ("get", "/roles", {}),
+        ("get", "/admin/settings/general", {}),
+        ("get", "/admin/settings/alerts", {}),
+        ("get", "/admin/settings/smtp", {}),
+        ("post", "/admin/settings/smtp/test-email", {"json": {}}),
     ]:
         r = await getattr(viewer, method)(f"{API}{url}", **kw)
         assert r.status_code == 403, (method, url, r.status_code)
@@ -182,6 +186,9 @@ async def test_rbac_matrix(admin, manager, viewer, anon):
         ("post", "/alerts/run", {}),
         ("get", "/users", {}),
         ("post", "/users", {"json": new_user()}),
+        ("get", "/admin/settings/general", {}),
+        ("put", "/admin/settings/general", {"json": {}}),
+        ("get", "/admin/settings/smtp", {}),
     ]:
         r = await getattr(manager, method)(f"{API}{url}", **kw)
         assert r.status_code == 403, (method, url, r.status_code)

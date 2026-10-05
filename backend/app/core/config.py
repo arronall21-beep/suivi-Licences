@@ -26,9 +26,18 @@ class Settings(BaseSettings):
 
     max_upload_mb: int = 10
 
-    # Devise des montants (code ISO + libellé affiché dans l'export Excel)
+    # Valeurs par défaut des paramètres généraux (modifiables ensuite dans Administration → Paramètres)
+    organization_name: str = "SBEE"
+    application_name: str = "Gestion du Patrimoine SI"
     currency: str = "XOF"
-    currency_label: str = "FCFA"
+    default_timezone: str = "Africa/Porto-Novo"
+    critical_days: int = 30
+    alert_days: int = 90
+
+    # Chiffrement des secrets stockés en base (mot de passe SMTP). Par défaut dérivée de SECRET_KEY.
+    settings_encryption_key: str = ""
+    # Répertoire où sont déposées les sauvegardes de la base (lecture seule, pour l'affichage du dernier backup)
+    backup_dir: str = "/backups"
 
     smtp_host: str = ""
     smtp_port: int = 587
@@ -36,6 +45,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     smtp_use_tls: bool = True
+    smtp_security: str = ""  # NONE | STARTTLS | SSL ; vide = déduit de SMTP_USE_TLS
     alert_recipients: str = ""
     alert_thresholds: str = "90,60,30,7"
 

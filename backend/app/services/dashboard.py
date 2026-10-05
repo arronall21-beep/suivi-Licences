@@ -118,6 +118,7 @@ async def build_dashboard(db: AsyncSession) -> dict:
 
     upcoming = filter_renewals(items, horizon_days=180)[:12]
     return {
+        "thresholds": {"critical_days": lifecycle.config.critical_days, "alert_days": lifecycle.config.alert_days},
         "kpis": {
             "total_assets": len(assets),
             "licences": by_cat.get("LICENCE", 0),

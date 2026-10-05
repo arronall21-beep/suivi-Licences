@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import lifecycle
-from app.core.config import settings
+from app.services import app_settings
 from app.services import excel_layout as L
 from app.services.dashboard import build_dashboard, filter_renewals, load_all, renewal_items
 
@@ -26,7 +26,13 @@ STATUS_FILLS = {
     "OK": "D4EDDA",
 }
 DATE_FMT = "DD/MM/YYYY"
-MONEY_FMT = f'#,##0 "{settings.currency_label}"'
+
+
+def money_format(label: str) -> str:
+    return f'#,##0 "{label}"'
+
+
+SCOPES = ("all", "licences", "contrats", "echeances", "planning")
 
 
 def _asset_value(asset, col: L.Col):
@@ -57,7 +63,7 @@ def _contract_value(c, col: L.Col):
     return float(v) if col.kind == "money" and v is not None else v
 
 
-def _write_table(ws, columns: list[L.Col], rows: list[list], start_row: int = 1):
+def _write_table(ws, columns: list[L.Col], rows: list[list], money_fmt: str, start_row: int = 1):
     for j, col in enumerate(columns, start=1):
         cell = ws.cell(row=start_row, column=j, value=col.label)
         cell.fill, cell.font, cell.border = HEADER_FILL, HEADER_FONT, BORDER
@@ -69,7 +75,7 @@ def _write_table(ws, columns: list[L.Col], rows: list[list], start_row: int = 1)
             if isinstance(v, (date, datetime)):
                 cell.number_format = DATE_FMT
             elif col.kind == "money" or col.key == "budget":
-                cell.number_format = MONEY_FMT
+                cell.number_format = money_fmt
     for j, col in enumerate(columns, start=1):
         width = max([len(col.label)] + [len(str(r[j - 1])) for r in rows[:200] if r[j - 1] is not None])
         ws.column_dimensions[get_column_letter(j)].width = min(max(width + 2, 10), 45)
@@ -87,7 +93,7 @@ def _write_table(ws, columns: list[L.Col], rows: list[list], start_row: int = 1)
                 )
 
 
-def _write_dashboard(ws, d: dict):
+def _write_dashboard(ws, d: dict, money_fmt: str):
     ws["A1"] = "Tableau de bord — Suivi des licences, certificats, matériels, applications et contrats"
     ws["A1"].font = TITLE_FONT
     ws["A2"] = f"Généré le {lifecycle.today().strftime('%d/%m/%Y')} depuis la base de données"
@@ -146,7 +152,7 @@ def _write_dashboard(ws, d: dict):
             vc = ws.cell(row=row, column=2, value=value)
             vc.border = BORDER
             if label.startswith(("Coût", "Montant", "Budget")):
-                vc.number_format = MONEY_FMT
+                vc.number_format = money_fmt
             row += 1
         row += 1
     ws.cell(row=row, column=1, value="Répartition des statuts par catégorie").font = Font(bold=True, color="1E3A5F")
@@ -165,45 +171,72 @@ def _write_dashboard(ws, d: dict):
         ws.column_dimensions[col].width = 16
 
 
-async def export_workbook(db: AsyncSession) -> bytes:
-    assets, contracts = await load_all(db)
-    wb = Workbook()
-    wb.remove(wb.active)
-    for sheet in L.ASSET_SHEETS:
-        ws = wb.create_sheet(sheet.name)
-        rows = [
-            [_asset_value(a, c) for c in sheet.columns]
-            for a in sorted((a for a in assets if a.category == sheet.category), key=lambda a: a.reference)
-        ]
-        _write_table(ws, sheet.columns, rows)
-    ws = wb.create_sheet(L.CONTRATS.name)
-    _write_table(
-        ws,
-        L.CONTRATS.columns,
-        [[_contract_value(c, col) for col in L.CONTRATS.columns] for c in sorted(contracts, key=lambda c: c.reference)],
-    )
-    ws = wb.create_sheet(L.PLANNING.name)
-    type_labels = {
-        "LICENCE": "Licence",
-        "CERTIFICAT": "Certificat",
-        "MATERIEL": "Matériel",
-        "APPLICATION": "Application",
-        "CONTRAT": "Contrat",
-    }
-    plan = filter_renewals(renewal_items(assets, contracts), horizon_days=None)
+TYPE_LABELS = {
+    "LICENCE": "Licence",
+    "CERTIFICAT": "Certificat",
+    "MATERIEL": "Matériel",
+    "APPLICATION": "Application",
+    "CONTRAT": "Contrat",
+}
+
+
+def _planning_rows(items: list[dict]) -> list[list]:
     rows = []
-    for it in plan:
+    for it in items:
         row = []
         for col in L.PLANNING.columns:
             v = it.get(col.key)
             if col.key == "type":
-                v = type_labels.get(v, v)
+                v = TYPE_LABELS.get(v, v)
             elif col.key == "status":
                 v = lifecycle.STATUS_LABELS[v]
             row.append(v)
         rows.append(row)
-    _write_table(ws, L.PLANNING.columns, rows)
-    _write_dashboard(wb.create_sheet(L.DASHBOARD.name), await build_dashboard(db))
+    return rows
+
+
+async def export_workbook(db: AsyncSession, scope: str = "all", horizon_days: int | None = None) -> bytes:
+    """Classeur au gabarit métier. scope : all (7 onglets), licences, contrats, echeances, planning."""
+    if scope not in SCOPES:
+        raise ValueError(f"Périmètre d'export inconnu : {scope}")
+    general = await app_settings.get_general(db)
+    fmt = money_format(general["currency_label"])
+    assets, contracts = await load_all(db)
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    def asset_sheet(sheet: L.Sheet):
+        rows = [
+            [_asset_value(a, c) for c in sheet.columns]
+            for a in sorted((a for a in assets if a.category == sheet.category), key=lambda a: a.reference)
+        ]
+        _write_table(wb.create_sheet(sheet.name), sheet.columns, rows, fmt)
+
+    def contract_sheet():
+        rows = [[_contract_value(c, col) for col in L.CONTRATS.columns] for c in sorted(contracts, key=lambda c: c.reference)]
+        _write_table(wb.create_sheet(L.CONTRATS.name), L.CONTRATS.columns, rows, fmt)
+
+    if scope == "all":
+        for sheet in L.ASSET_SHEETS:
+            asset_sheet(sheet)
+        contract_sheet()
+    elif scope == "licences":
+        asset_sheet(L.LICENCES)
+    elif scope == "contrats":
+        contract_sheet()
+
+    if scope in ("all", "planning"):
+        plan = filter_renewals(renewal_items(assets, contracts), horizon_days=horizon_days)
+        _write_table(wb.create_sheet(L.PLANNING.name), L.PLANNING.columns, _planning_rows(plan), fmt)
+    if scope == "echeances":
+        due = [
+            i
+            for i in filter_renewals(renewal_items(assets, contracts), horizon_days=None)
+            if i["status"] in (lifecycle.EXPIRE, lifecycle.CRITIQUE, lifecycle.ALERTE)
+        ]
+        _write_table(wb.create_sheet("Echeances"), L.PLANNING.columns, _planning_rows(due), fmt)
+    if scope == "all":
+        _write_dashboard(wb.create_sheet(L.DASHBOARD.name), await build_dashboard(db), fmt)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
