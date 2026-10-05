@@ -1,0 +1,72 @@
+/*
+ * Design tokens — charte graphique de l'application (identité institutionnelle SBEE).
+ * Source unique des couleurs : les composants utilisent les classes Tailwind (brand-*, accent-*, danger-*, …)
+ * qui lisent ces variables. Pour ajuster la charte officielle, modifier uniquement ce fichier.
+ * Valeurs au format "R G B" (permet les opacités Tailwind : bg-brand-600/20).
+ * Palette PROVISOIRE : à valider avec la charte graphique officielle de la SBEE.
+ */
+:root {
+  /* Marque : bleu institutionnel */
+  --brand-50: 238 244 251;
+  --brand-100: 217 230 245;
+  --brand-200: 180 205 235;
+  --brand-300: 134 174 219;
+  --brand-400: 86 140 199;
+  --brand-500: 51 111 176;
+  --brand-600: 36 90 150;
+  --brand-700: 29 74 124;
+  --brand-800: 25 61 102;
+  --brand-900: 20 47 79;
+  --brand-950: 13 32 54;
+
+  /* Accent : ambre (énergie), utilisé avec parcimonie (repères, focus) */
+  --accent-100: 254 243 199;
+  --accent-400: 251 191 36;
+  --accent-500: 245 158 11;
+  --accent-600: 217 119 6;
+
+  /* États sémantiques */
+  --danger-50: 254 242 242;
+  --danger-100: 254 226 226;
+  --danger-200: 254 202 202;
+  --danger-500: 239 68 68;
+  --danger-600: 220 38 38;
+  --danger-700: 185 28 28;
+  --danger-800: 153 27 27;
+
+  --caution-50: 255 247 237;
+  --caution-100: 255 237 213;
+  --caution-200: 254 215 170;
+  --caution-500: 249 115 22;
+  --caution-600: 234 88 12;
+  --caution-700: 194 65 12;
+  --caution-800: 154 52 18;
+
+  --warning-50: 255 251 235;
+  --warning-100: 254 243 199;
+  --warning-200: 253 230 138;
+  --warning-500: 245 158 11;
+  --warning-600: 217 119 6;
+  --warning-700: 180 83 9;
+  --warning-800: 146 64 14;
+
+  --success-50: 236 253 245;
+  --success-100: 209 250 229;
+  --success-200: 167 243 208;
+  --success-500: 16 185 129;
+  --success-600: 5 150 105;
+  --success-700: 4 120 87;
+  --success-800: 6 95 70;
+
+  /* Surfaces et textes (neutres) */
+  --surface-app: 248 250 252;
+  --surface-card: 255 255 255;
+  --ink-strong: 15 23 42;
+  --ink-body: 51 65 85;
+  --ink-muted: 100 116 139;
+  --border-subtle: 226 232 240;
+
+  /* Typographie */
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-card: 0.75rem;
+}

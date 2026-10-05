@@ -17,7 +17,9 @@ export default function Contracts() {
   const [status, setStatus] = useState("");
   const { data, loading, reload } = useFetch<Contract[]>("/contracts", { q, type, status });
   const [editing, setEditing] = useState<Contract | null | undefined>(undefined);
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
+  const canWrite = can("data:write");
+  const canDelete = can("data:delete");
   const toast = useToast();
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function Contracts() {
       <PageHeader
         title="Contrats"
         subtitle={data ? `${data.length} contrat(s) — ${fmtMoney(total)} / an` : undefined}
-        actions={isAdmin && <button className="btn-primary" onClick={() => setEditing(null)}><Plus className="h-4 w-4" /> Nouveau contrat</button>}
+        actions={canWrite && <button className="btn-primary" onClick={() => setEditing(null)}><Plus className="h-4 w-4" /> Nouveau contrat</button>}
       />
       <div className="card mb-4 flex flex-wrap gap-3 p-4">
         <div className="relative min-w-[260px] flex-1">
@@ -70,7 +72,7 @@ export default function Contracts() {
               {data?.map((c) => {
                 const noticeReached = c.renewal_start_date && new Date(c.renewal_start_date) <= new Date();
                 return (
-                  <tr key={c.id} id={`c-${c.id}`} className={focus === c.id ? "bg-blue-50" : "hover:bg-slate-50"}>
+                  <tr key={c.id} id={`c-${c.id}`} className={focus === c.id ? "bg-brand-50" : "hover:bg-slate-50"}>
                     <td className="td">
                       <div className="font-mono text-xs font-medium text-slate-800">{c.reference}</div>
                       {c.market_ref && <div className="text-xs text-slate-500">Marché {c.market_ref}</div>}
@@ -83,7 +85,7 @@ export default function Contracts() {
                     <td className="td">{c.internal_owner ?? "—"}</td>
                     <td className="td">{fmtDate(c.end_date)}</td>
                     <td className="td">{c.notice_period_days != null ? `${c.notice_period_days} j` : "—"}</td>
-                    <td className={`td ${noticeReached && c.lifecycle_status !== "EXPIRE" ? "font-semibold text-orange-700" : ""}`}>
+                    <td className={`td ${noticeReached && c.lifecycle_status !== "EXPIRE" ? "font-semibold text-caution-700" : ""}`}>
                       {fmtDate(c.renewal_start_date)}
                       {noticeReached && c.lifecycle_status !== "EXPIRE" && <div className="text-xs font-normal">Préavis atteint</div>}
                     </td>
@@ -93,12 +95,8 @@ export default function Contracts() {
                     <td className="td text-xs">{c.status ?? "—"}</td>
                     <td className="td text-right">
                       <Link to={`/actifs?contract_id=${c.id}`} className="btn-ghost" title="Actifs liés"><ExternalLink className="h-4 w-4" /></Link>
-                      {isAdmin && (
-                        <>
-                          <button className="btn-ghost" onClick={() => setEditing(c)}><Pencil className="h-4 w-4" /></button>
-                          <ConfirmButton onConfirm={() => remove(c)} message={`Supprimer le contrat ${c.reference} ? Les actifs liés seront détachés.`}><Trash2 className="h-4 w-4" /></ConfirmButton>
-                        </>
-                      )}
+                      {canWrite && <button className="btn-ghost" title="Modifier" onClick={() => setEditing(c)}><Pencil className="h-4 w-4" /></button>}
+                      {canDelete && <ConfirmButton onConfirm={() => remove(c)} message={<>Supprimer le contrat <b>{c.reference}</b> ? Les actifs liés seront détachés.</>}><Trash2 className="h-4 w-4" /></ConfirmButton>}
                     </td>
                   </tr>
                 );

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" role="img" aria-label="Logo (emplacement réservé)">
+  <!-- Emplacement réservé : remplacer ce fichier par le logo officiel de la SBEE (voir public/branding/README.md). -->
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="#245a96"/>
+  <path d="M38 12 22 36h10l-4 16 16-26H34z" fill="#f59e0b"/>
+  <text x="76" y="42" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#142f4f">SBEE</text>
+</svg>

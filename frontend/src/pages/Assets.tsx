@@ -22,7 +22,9 @@ export default function Assets() {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
+  const canWrite = can("data:write");
+  const canDelete = can("data:delete");
   const { vendors } = useReferenceData();
   const options = useFetch<Options>("/assets/options").data;
 
@@ -92,7 +94,7 @@ export default function Assets() {
       <PageHeader
         title={title}
         subtitle={data ? `${data.total} élément(s)` : undefined}
-        actions={isAdmin && (
+        actions={canWrite && (
           <button className="btn-primary" onClick={() => setEditing(null)}>
             <Plus className="h-4 w-4" /> Nouvel actif
           </button>
@@ -143,7 +145,7 @@ export default function Assets() {
       </div>
 
       <div className="card overflow-hidden">
-        {error && <div className="p-4 text-sm text-red-700">{error}</div>}
+        {error && <div className="p-4 text-sm text-danger-700">{error}</div>}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
@@ -181,12 +183,8 @@ export default function Assets() {
                   <td className="td"><CriticalityBadge value={a.criticality} /></td>
                   <td className="td text-right" onClick={(e) => e.stopPropagation()}>
                     <button className="btn-ghost" title="Ouvrir" onClick={() => navigate(`/actifs/fiche/${a.id}`)}><Eye className="h-4 w-4" /></button>
-                    {isAdmin && (
-                      <>
-                        <button className="btn-ghost" title="Modifier" onClick={() => setEditing(a)}><Pencil className="h-4 w-4" /></button>
-                        <ConfirmButton onConfirm={() => remove(a)} message={`Supprimer ${a.reference} ?`}><Trash2 className="h-4 w-4" /></ConfirmButton>
-                      </>
-                    )}
+                    {canWrite && <button className="btn-ghost" title="Modifier" onClick={() => setEditing(a)}><Pencil className="h-4 w-4" /></button>}
+                    {canDelete && <ConfirmButton onConfirm={() => remove(a)} message={<>Supprimer <b>{a.reference}</b> ({a.name}) ? Ses affectations seront également supprimées.</>}><Trash2 className="h-4 w-4" /></ConfirmButton>}
                   </td>
                 </tr>
               ))}

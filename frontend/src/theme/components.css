@@ -1,0 +1,86 @@
+/* Composants de base (boutons, champs, cartes, tableaux, navigation) construits sur les tokens. */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+  body {
+    background: rgb(var(--surface-app));
+    color: rgb(var(--ink-body));
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+  }
+  .input-invalid {
+    @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/25;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-600;
+  }
+  .hint {
+    @apply mt-1 text-xs text-slate-500;
+  }
+  .field-error {
+    @apply mt-1 text-xs font-medium text-danger-700;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-700 text-white shadow-sm hover:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply btn bg-danger-600 text-white shadow-sm hover:bg-danger-700;
+  }
+  .btn-ghost {
+    @apply btn px-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5;
+  }
+  .card-title {
+    @apply text-sm font-semibold text-slate-900;
+  }
+
+  .th {
+    @apply whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .td {
+    @apply whitespace-nowrap px-3 py-2.5 text-sm text-slate-700;
+  }
+  .table-head {
+    @apply bg-slate-50;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset;
+  }
+
+  /* Navigation latérale */
+  .nav-section {
+    @apply px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-brand-300/80;
+  }
+  .nav-link {
+    @apply flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium text-brand-100/90 transition hover:bg-white/10 hover:text-white;
+  }
+  .nav-link-active {
+    @apply bg-white/10 text-white shadow-[inset_3px_0_0_rgb(var(--accent-500))];
+  }
+  .nav-sub {
+    @apply flex items-center gap-3 rounded-md py-1 pl-9 pr-3 text-sm text-brand-200/80 transition hover:bg-white/10 hover:text-white;
+  }
+}

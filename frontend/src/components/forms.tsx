@@ -3,7 +3,7 @@ import { api } from "../api";
 import { CATEGORY_LABELS, CERT_TYPES, CURRENCY, CONTRACT_TYPES, CRITICALITIES, ENVIRONMENTS, LICENSE_TYPES } from "../format";
 import { useReferenceData } from "../hooks";
 import type { Asset, Assignment, Category, Contract, Vendor } from "../types";
-import { Field, useToast } from "./ui";
+import { Button, Field, FormError, useToast } from "./ui";
 
 type Values = Record<string, string>;
 
@@ -34,14 +34,14 @@ function FormShell({ onSubmit, onCancel, saving, error, children }: { onSubmit: 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       {children}
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      <FormError message={error} />
       <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
-        <button type="button" className="btn-secondary" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Annuler
-        </button>
-        <button type="submit" className="btn-primary" disabled={saving}>
+        </Button>
+        <Button type="submit" loading={saving}>
           {saving ? "Enregistrement…" : "Enregistrer"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -50,7 +50,7 @@ function FormShell({ onSubmit, onCancel, saving, error, children }: { onSubmit: 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset>
-      <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-700">{title}</legend>
+      <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-700">{title}</legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
     </fieldset>
   );
@@ -110,6 +110,7 @@ export function AssetForm({ asset, category, onSaved, onCancel }: { asset?: Asse
     setError(null);
     try {
       const body = toPayload(values, ["vendor_id", "contract_id", "annual_cost", "budget_estimated", "total_quantity"]);
+      delete body.reference; // générée côté serveur à la création, conservée à la modification
       const saved = asset ? await api.put<Asset>(`/assets/${asset.id}`, body) : await api.post<Asset>("/assets", body);
       toast("success", asset ? "Actif mis à jour" : "Actif créé");
       onSaved(saved);
@@ -132,8 +133,8 @@ export function AssetForm({ asset, category, onSaved, onCancel }: { asset?: Asse
             ))}
           </select>
         </Field>
-        <Field label="Référence *">
-          <input className="input" required {...bind("reference")} />
+        <Field label="Référence" hint={asset ? "Non modifiable" : "Référence générée automatiquement"}>
+          <input className="input" disabled readOnly value={asset ? asset.reference : "Générée à l'enregistrement"} />
         </Field>
         <Field label="Nom *">
           <input className="input" required {...bind("name")} />
@@ -267,6 +268,7 @@ export function ContractForm({ contract, onSaved, onCancel }: { contract?: Contr
     setError(null);
     try {
       const body = toPayload(values, ["vendor_id", "notice_period_days", "annual_amount"]);
+      delete body.reference; // générée côté serveur à la création, conservée à la modification
       if (contract) await api.put(`/contracts/${contract.id}`, body);
       else await api.post("/contracts", body);
       toast("success", contract ? "Contrat mis à jour" : "Contrat créé");
@@ -280,8 +282,8 @@ export function ContractForm({ contract, onSaved, onCancel }: { contract?: Contr
   return (
     <FormShell onSubmit={submit} onCancel={onCancel} saving={saving} error={error}>
       <Section title="Contrat">
-        <Field label="Référence *">
-          <input className="input" required {...bind("reference")} />
+        <Field label="Référence" hint={contract ? "Non modifiable" : "Référence générée automatiquement"}>
+          <input className="input" disabled readOnly value={contract ? contract.reference : "Générée à l'enregistrement"} />
         </Field>
         <Field label="Référence marché">
           <input className="input" {...bind("market_ref")} />
@@ -350,7 +352,10 @@ export function VendorForm({ vendor, onSaved, onCancel }: { vendor?: Vendor | nu
   return (
     <FormShell onSubmit={submit} onCancel={onCancel} saving={saving} error={error}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Nom *" className="sm:col-span-2">
+        <Field label="Référence" hint={vendor ? "Non modifiable" : "Référence générée automatiquement"}>
+          <input className="input" disabled readOnly value={vendor?.reference ?? "Générée à l'enregistrement"} />
+        </Field>
+        <Field label="Nom *">
           <input className="input" required {...bind("name")} />
         </Field>
         <Field label="Contact">
@@ -412,7 +417,7 @@ export function AssignmentForm({ assignment, licences, fixedAssetId, onSaved, on
           </Field>
         )}
         {selected && (
-          <div className="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800 sm:col-span-2">
+          <div className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800 sm:col-span-2">
             {selected.assigned_quantity} / {selected.total_quantity ?? 0} affectées — <b>{selected.available_quantity ?? 0} disponible(s)</b>
           </div>
         )}

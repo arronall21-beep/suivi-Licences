@@ -3,6 +3,7 @@ export type Status = "EXPIRE" | "CRITIQUE" | "ALERTE" | "OK" | "INCONNU";
 
 export interface Vendor {
   id: number;
+  reference: string | null;
   name: string;
   contact_person: string | null;
   email_support: string | null;
@@ -119,7 +120,23 @@ export interface RenewalItem {
   threshold?: number;
 }
 
+export interface TopRisk {
+  id: number;
+  reference: string;
+  name: string;
+  category: Category;
+  status: Status;
+  days_remaining: number;
+  end_date: string | null;
+  criticality: string | null;
+  owner: string | null;
+  score: number;
+  reasons: string[];
+}
+
 export interface Dashboard {
+  thresholds: { critical_days: number; alert_days: number };
+  top_risks: TopRisk[];
   kpis: Record<"total_assets" | "licences" | "certificats" | "materiels" | "applications" | "contracts" | "vendors", number>;
   deadlines: Record<"expired" | "critical" | "warning" | "ok" | "unknown", number>;
   contract_deadlines: Record<"expired" | "critical" | "warning" | "ok" | "unknown", number>;
@@ -128,6 +145,46 @@ export interface Dashboard {
   by_category: { category: Category; label: string; count: number }[];
   status_by_category: ({ category: Category; label: string } & Record<Status, number>)[];
   upcoming_renewals: RenewalItem[];
+}
+
+export type Role = "ADMIN" | "MANAGER" | "VIEWER";
+
+export interface AppUser {
+  id: number;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  phone: string | null;
+  department: string | null;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+  last_login_at: string | null;
+  permissions?: string[];
+}
+
+export interface AppConfig {
+  org_name: string;
+  app_name: string;
+  currency: string;
+  currency_label: string;
+  timezone: string;
+  critical_days: number;
+  alert_days: number;
+  alert_thresholds: number[];
+  version: string;
+}
+
+export interface InboxItem {
+  id: number;
+  kind: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  title: string;
+  message: string | null;
+  link: string | null;
+  created_at: string;
+  read: boolean;
 }
 
 export interface ImportReport {
