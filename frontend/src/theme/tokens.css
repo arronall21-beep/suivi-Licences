@@ -1,0 +1,114 @@
+/*
+ * Design tokens — Charte graphique officielle SBEE (Juillet 2023, V2.4).
+ * SOURCE UNIQUE des couleurs : aucun composant ne doit coder de valeur hexadécimale.
+ * Les composants utilisent les classes Tailwind (brand-*, info-*, success-*, warning-*, caution-*, danger-*, slate-*)
+ * qui lisent ces variables. Format "R G B" (permet les opacités Tailwind : bg-brand-500/20).
+ */
+:root {
+  /* ===== Couleurs OFFICIELLES de la charte ===== */
+  --sbee-red: 237 31 36; /* #ED1F24 — couleur dominante */
+  --sbee-white: 255 255 255; /* #FFFFFF */
+  --sbee-yellow: 249 168 37; /* #F9A825 — association */
+  --sbee-green: 0 204 102; /* #00CC66 — association */
+  --sbee-blue: 59 89 152; /* #3B5998 — association */
+  --sbee-gray-light: 192 192 192; /* #C0C0C0 — neutre */
+  --sbee-gray-dark: 85 85 85; /* #555555 — neutre */
+  --sbee-black: 0 0 0; /* #000000 */
+
+  /*
+   * ===== Échelles dérivées (états d'interface uniquement) =====
+   * Les teintes 500 sont les couleurs officielles. Les autres nuances (survol, fonds légers, textes
+   * suffisamment contrastés sur fond blanc) sont déduites par éclaircissement / assombrissement.
+   */
+  /* Marque : rouge SBEE */
+  --brand-50: 254 242 242;
+  --brand-100: 253 226 227;
+  --brand-200: 251 196 198;
+  --brand-300: 247 150 154;
+  --brand-400: 242 92 97;
+  --brand-500: var(--sbee-red);
+  --brand-600: 207 24 29; /* fond de la barre latérale (blanc dessus : 5,5:1) et survol des boutons */
+  --brand-700: 172 18 23; /* liens et textes rouges sur fond blanc (7,4:1) */
+  --brand-800: 139 14 18;
+  --brand-900: 105 10 14;
+  --brand-950: 60 6 8;
+
+  /* Information : bleu SBEE */
+  --info-50: 240 243 250;
+  --info-100: 221 228 242;
+  --info-200: 190 203 230;
+  --info-500: var(--sbee-blue);
+  --info-600: 49 75 130;
+  --info-700: 40 61 107;
+  --info-800: 31 47 83;
+
+  /* Succès : vert SBEE (700 et 800 pour le texte sur fond blanc) */
+  --success-50: 232 252 241;
+  --success-100: 200 247 224;
+  --success-200: 150 238 192;
+  --success-500: var(--sbee-green);
+  --success-600: 0 163 82;
+  --success-700: 0 128 64;
+  --success-800: 0 97 49;
+
+  /* Avertissement : jaune SBEE */
+  --warning-50: 255 249 230;
+  --warning-100: 254 240 196;
+  --warning-200: 252 224 142;
+  --warning-500: var(--sbee-yellow);
+  --warning-600: 217 140 14;
+  --warning-700: 168 105 6;
+  --warning-800: 133 82 4;
+
+  /* Alerte intermédiaire (rouge → jaune) : niveau « critique » des échéances */
+  --caution-50: 254 244 236;
+  --caution-100: 253 228 208;
+  --caution-200: 250 200 160;
+  --caution-500: 242 107 29;
+  --caution-600: 215 85 12;
+  --caution-700: 170 64 8;
+  --caution-800: 130 49 6;
+
+  /* Danger : rouge SBEE */
+  --danger-50: var(--brand-50);
+  --danger-100: var(--brand-100);
+  --danger-200: var(--brand-200);
+  --danger-500: var(--sbee-red);
+  --danger-600: var(--brand-600);
+  --danger-700: var(--brand-700);
+  --danger-800: var(--brand-800);
+
+  /* Accent : jaune SBEE (repères d'état actif) */
+  --accent-100: var(--warning-100);
+  --accent-400: 251 191 36;
+  --accent-500: var(--sbee-yellow);
+  --accent-600: var(--warning-600);
+
+  /* Neutres : gris de la charte (300 = gris clair officiel, 600 = gris foncé officiel, 950 = noir) */
+  --gray-50: 247 247 247;
+  --gray-100: 240 240 240;
+  --gray-200: 226 226 226;
+  --gray-300: var(--sbee-gray-light);
+  --gray-400: 150 150 150;
+  --gray-500: 110 110 110;
+  --gray-600: var(--sbee-gray-dark);
+  --gray-700: 64 64 64;
+  --gray-800: 38 38 38;
+  --gray-900: 20 20 20;
+  --gray-950: var(--sbee-black);
+
+  /* Surfaces et textes */
+  --surface-app: 247 247 247;
+  --surface-card: var(--sbee-white);
+  --ink-strong: 20 20 20;
+  --ink-body: var(--sbee-gray-dark);
+  --ink-muted: 110 110 110;
+  --border-subtle: 226 226 226;
+
+  /* Typographie : Poppins (auto-hébergée), Century Gothic en repli */
+  --font-sans: "Poppins", "Century Gothic", CenturyGothic, AppleGothic, "Segoe UI", system-ui, sans-serif;
+  --radius-card: 0.75rem;
+
+  /* Trame décorative (symbole du logo) : opacité maximale autorisée par la charte, 5 à 10 % */
+  --watermark-opacity: 0.07;
+}

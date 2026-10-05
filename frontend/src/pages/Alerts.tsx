@@ -3,7 +3,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { DaysCell, EmptyState, PageHeader, Spinner, StatusBadge, useToast } from "../components/ui";
+import { notifyInboxChanged } from "../components/NotificationBell";
+import { Button, DaysCell, EmptyState, Spinner, StatusBadge, useToast } from "../components/ui";
+import { useConfig } from "../config";
 import { CATEGORY_LABELS, fmtDate, fmtDateTime } from "../format";
 import { useFetch } from "../hooks";
 import type { NotificationItem, RenewalItem } from "../types";
@@ -17,15 +19,16 @@ interface AlertsData {
 
 const thLabel = (t: number) => (t === 0 ? "Expiré" : `J-${t}`);
 const DELIVERY: Record<string, string> = {
-  ENVOYE: "bg-emerald-100 text-emerald-800",
+  ENVOYE: "bg-success-100 text-success-800",
   NON_ENVOYE: "bg-slate-100 text-slate-700",
-  ERREUR: "bg-red-100 text-red-800",
+  ERREUR: "bg-danger-100 text-danger-800",
 };
 
-export default function Alerts() {
+export default function AlertsPanel() {
   const alerts = useFetch<AlertsData>("/alerts");
   const history = useFetch<NotificationItem[]>("/notifications");
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
+  const { config } = useConfig();
   const toast = useToast();
   const navigate = useNavigate();
   const [running, setRunning] = useState(false);
@@ -38,6 +41,8 @@ export default function Alerts() {
       else if (r.delivery_status === "ENVOYE") toast("success", `${r.new} alerte(s) envoyée(s) par email`);
       else toast("error", `${r.new} alerte(s) enregistrée(s) mais non envoyée(s) : ${r.error}`);
       history.reload();
+      alerts.reload();
+      notifyInboxChanged();
     } catch (e) {
       toast("error", (e as Error).message);
     } finally {
@@ -49,17 +54,22 @@ export default function Alerts() {
 
   return (
     <>
-      <PageHeader
-        title="Alertes d'échéance"
-        subtitle="Contrôle quotidien automatique (J-90, J-60, J-30, J-7 et expirés) — une seule notification par seuil et par échéance"
-        actions={isAdmin && <button className="btn-primary" onClick={run} disabled={running}><Play className="h-4 w-4" /> {running ? "Exécution…" : "Lancer le contrôle maintenant"}</button>}
-      />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">
+          Contrôle quotidien automatique ({(a?.thresholds ?? config.alert_thresholds).map((t) => `J-${t}`).join(", ")} et expirés) — une seule notification par seuil et par échéance.
+        </p>
+        {can("alerts:run") && (
+          <Button onClick={run} loading={running} icon={<Play className="h-4 w-4" />}>
+            {running ? "Exécution…" : "Lancer le contrôle maintenant"}
+          </Button>
+        )}
+      </div>
       {a && (
-        <div className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${a.smtp_configured && a.recipients.length ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+        <div className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${a.smtp_configured && a.recipients.length ? "border-success-200 bg-success-50 text-success-800" : "border-warning-200 bg-warning-50 text-warning-800"}`}>
           <Mail className="h-4 w-4" />
           {a.smtp_configured && a.recipients.length
             ? <>Emails envoyés à : <b>{a.recipients.join(", ")}</b></>
-            : <>Envoi email inactif : configurer SMTP_HOST, SMTP_FROM et ALERT_RECIPIENTS dans le fichier .env. Les alertes restent tracées dans l'historique.</>}
+            : <>SMTP non configuré ou aucun destinataire : configurer le SMTP (Administration → SMTP) et les destinataires (Administration → Paramètres). Les alertes restent tracées dans l'historique et dans les notifications.</>}
         </div>
       )}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -68,7 +78,7 @@ export default function Alerts() {
           return (
             <div key={t} className="card p-4">
               <div className="flex items-center gap-2 text-xs font-medium text-slate-500"><BellRing className="h-3.5 w-3.5" /> {thLabel(t)}</div>
-              <div className={`mt-1 text-2xl font-semibold tabular-nums ${t <= 7 ? "text-red-700" : t <= 30 ? "text-orange-700" : "text-slate-900"}`}>{n}</div>
+              <div className={`mt-1 text-2xl font-semibold tabular-nums ${t <= 7 ? "text-danger-700" : t <= 30 ? "text-caution-700" : "text-slate-900"}`}>{n}</div>
             </div>
           );
         })}

@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    Sequence,
     String,
     Text,
     UniqueConstraint,
@@ -18,7 +19,21 @@ from app.core.config import settings
 from app.database import Base
 
 CATEGORIES = ["LICENCE", "CERTIFICAT", "MATERIEL", "APPLICATION"]
-ROLES = ["ADMIN", "VIEWER"]
+ROLES = ["ADMIN", "MANAGER", "VIEWER"]
+
+# Séquences PostgreSQL des références automatiques (jamais count()+1 : pas de collision
+# après suppression ni en cas de créations simultanées).
+REFERENCE_PREFIXES = {
+    "LICENCE": "LIC",
+    "CERTIFICAT": "CERT",
+    "MATERIEL": "MAT",
+    "APPLICATION": "APP",
+    "CONTRACT": "CTR",
+    "VENDOR": "VEN",
+}
+REFERENCE_SEQUENCES = {
+    kind: Sequence(f"ref_{prefix.lower()}_seq", metadata=Base.metadata) for kind, prefix in REFERENCE_PREFIXES.items()
+}
 
 
 class TimestampMixin:
@@ -32,15 +47,22 @@ class User(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     full_name: Mapped[str | None] = mapped_column(String(255))
+    first_name: Mapped[str | None] = mapped_column(String(120))
+    last_name: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(50))
+    department: Mapped[str | None] = mapped_column(String(255))
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="VIEWER")
     is_active: Mapped[bool] = mapped_column(default=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Vendor(TimestampMixin, Base):
     __tablename__ = "vendors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    reference: Mapped[str | None] = mapped_column(String(100), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     contact_person: Mapped[str | None] = mapped_column(String(255))
     email_support: Mapped[str | None] = mapped_column(String(255))
@@ -232,4 +254,62 @@ class ImportLog(Base):
     errors_count: Mapped[int] = mapped_column(Integer, default=0)
     report: Mapped[str | None] = mapped_column(Text)  # JSON
     imported_by: Mapped[str | None] = mapped_column(String(255))
+    file_size: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), default="SUCCESS", server_default="SUCCESS")  # SUCCESS/WARNINGS/ERRORS/FAILED
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AppNotification(Base):
+    """Notification interne (cloche de l'interface). Diffusée à tous les utilisateurs de l'audience."""
+
+    __tablename__ = "app_notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    priority: Mapped[str] = mapped_column(String(10), default="MEDIUM")  # HIGH / MEDIUM / LOW
+    title: Mapped[str] = mapped_column(String(255))
+    message: Mapped[str | None] = mapped_column(Text)
+    link: Mapped[str | None] = mapped_column(String(500))
+    entity_type: Mapped[str | None] = mapped_column(String(20))
+    entity_id: Mapped[int | None] = mapped_column(Integer)
+    audience: Mapped[str] = mapped_column(String(10), default="ALL")  # ALL / ADMIN
+    dedupe_key: Mapped[str | None] = mapped_column(String(200), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class AppNotificationRead(Base):
+    __tablename__ = "app_notification_reads"
+
+    notification_id: Mapped[int] = mapped_column(ForeignKey("app_notifications.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AppSetting(Base):
+    """Paramètre applicatif clé/valeur (valeur JSON). Les secrets sont chiffrés (is_secret)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text)
+    is_secret: Mapped[bool] = mapped_column(default=False, server_default="false")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by: Mapped[str | None] = mapped_column(String(255))
+
+
+class AuditLog(Base):
+    """Journal d'audit des actions administratives et métier sensibles. Écriture seule (pas de modification)."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer)
+    user_email: Mapped[str | None] = mapped_column(String(255), index=True)
+    action: Mapped[str] = mapped_column(String(50), index=True)
+    entity_type: Mapped[str | None] = mapped_column(String(30), index=True)
+    entity_id: Mapped[str | None] = mapped_column(String(50))
+    entity_label: Mapped[str | None] = mapped_column(String(255))
+    result: Mapped[str] = mapped_column(String(10), default="SUCCESS")  # SUCCESS / FAILURE
+    details: Mapped[str | None] = mapped_column(Text)
+    ip_address: Mapped[str | None] = mapped_column(String(64))

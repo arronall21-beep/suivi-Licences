@@ -34,13 +34,15 @@ export default function AssetDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
+  const canWrite = can("data:write");
+  const canDelete = can("data:delete");
   const { data: a, loading, error, reload } = useFetch<Asset>(`/assets/${id}`);
   const [edit, setEdit] = useState(false);
   const [assign, setAssign] = useState<Assignment | null | undefined>(undefined);
 
   if (loading && !a) return <Spinner />;
-  if (error || !a) return <div className="card p-6 text-red-700">{error ?? "Introuvable"}</div>;
+  if (error || !a) return <div className="card p-6 text-danger-700">{error ?? "Introuvable"}</div>;
 
   const removeAssignment = async (as: Assignment) => {
     try {
@@ -77,10 +79,10 @@ export default function AssetDetail() {
             <span className="font-mono">{a.reference}</span> · {CATEGORY_LABELS[a.category]} · mis à jour le {fmtDateTime(a.updated_at)}
           </div>
         </div>
-        {isAdmin && (
+        {(canWrite || canDelete) && (
           <div className="flex gap-2">
-            <button className="btn-secondary" onClick={() => setEdit(true)}><Pencil className="h-4 w-4" /> Modifier</button>
-            <ConfirmButton onConfirm={removeAsset} message={`Supprimer définitivement ${a.reference} ?`}><Trash2 className="h-4 w-4" /> Supprimer</ConfirmButton>
+            {canWrite && <button className="btn-secondary" onClick={() => setEdit(true)}><Pencil className="h-4 w-4" /> Modifier</button>}
+            {canDelete && <ConfirmButton onConfirm={removeAsset} message={<>Supprimer définitivement <b>{a.reference}</b> ({a.name}) et ses affectations ?</>}><Trash2 className="h-4 w-4" /> Supprimer</ConfirmButton>}
           </div>
         )}
       </div>
@@ -96,8 +98,8 @@ export default function AssetDetail() {
         <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[
             ["Quantité totale", fmtNum(a.total_quantity), "text-slate-900"],
-            ["Quantité affectée", fmtNum(a.assigned_quantity), "text-blue-700"],
-            ["Quantité disponible", fmtNum(a.available_quantity), (a.available_quantity ?? 0) === 0 ? "text-red-700" : "text-emerald-700"],
+            ["Quantité affectée", fmtNum(a.assigned_quantity), "text-info-700"],
+            ["Quantité disponible", fmtNum(a.available_quantity), (a.available_quantity ?? 0) === 0 ? "text-danger-700" : "text-success-700"],
           ].map(([l, v, c]) => (
             <div key={l} className="card p-4"><div className="text-xs text-slate-500">{l}</div><div className={`mt-1 text-2xl font-semibold tabular-nums ${c}`}>{v}</div></div>
           ))}
@@ -114,7 +116,7 @@ export default function AssetDetail() {
           <Block title="Informations générales">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
               <Item label="Fournisseur">{a.vendor_name}</Item>
-              <Item label="Contrat">{a.contract_reference && <Link className="text-blue-700 hover:underline" to={`/contrats?focus=${a.contract_id}`}>{a.contract_reference}</Link>}</Item>
+              <Item label="Contrat">{a.contract_reference && <Link className="text-brand-700 hover:underline" to={`/contrats?focus=${a.contract_id}`}>{a.contract_reference}</Link>}</Item>
               <Item label="Responsable">{a.internal_owner}</Item>
               <Item label="Direction">{a.user_department}</Item>
               <Item label="Date de début">{a.start_date && fmtDate(a.start_date)}</Item>
@@ -128,7 +130,7 @@ export default function AssetDetail() {
           </Block>
 
           {isLic && (
-            <Block title={`Affectations (${a.assignments?.length ?? 0})`} action={isAdmin && (
+            <Block title={`Affectations (${a.assignments?.length ?? 0})`} action={canWrite && (
               <button className="btn-primary py-1.5" disabled={(a.available_quantity ?? 0) <= 0} onClick={() => setAssign(null)}
                 title={(a.available_quantity ?? 0) <= 0 ? "Aucune licence disponible" : undefined}>
                 <Plus className="h-4 w-4" /> Affecter
@@ -137,7 +139,7 @@ export default function AssetDetail() {
               {a.assignments?.length ? (
                 <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
-                  <thead><tr><th className="th">Utilisateur</th><th className="th">Poste</th><th className="th">Direction</th><th className="th">Qté</th><th className="th">Date</th><th className="th">Notes</th>{isAdmin && <th className="th" />}</tr></thead>
+                  <thead><tr><th className="th">Utilisateur</th><th className="th">Poste</th><th className="th">Direction</th><th className="th">Qté</th><th className="th">Date</th><th className="th">Notes</th>{canWrite && <th className="th" />}</tr></thead>
                   <tbody className="divide-y divide-slate-100">
                     {a.assignments.map((as) => (
                       <tr key={as.id}>
@@ -147,10 +149,10 @@ export default function AssetDetail() {
                         <td className="td font-semibold tabular-nums">{as.quantity}</td>
                         <td className="td">{fmtDate(as.assigned_date)}</td>
                         <td className="td max-w-[220px] truncate text-slate-500" title={as.notes ?? ""}>{as.notes ?? ""}</td>
-                        {isAdmin && (
+                        {canWrite && (
                           <td className="td text-right">
                             <button className="btn-ghost" onClick={() => setAssign(as)}><Pencil className="h-4 w-4" /></button>
-                            <ConfirmButton onConfirm={() => removeAssignment(as)}><Trash2 className="h-4 w-4" /></ConfirmButton>
+                            <ConfirmButton onConfirm={() => removeAssignment(as)} title="Désaffecter" confirmLabel="Désaffecter" message={<>Retirer l'affectation de {as.quantity} licence(s) à <b>{as.assigned_to_user ?? as.assigned_to_device ?? as.assigned_to_department}</b> ?</>} irreversible={false}><Trash2 className="h-4 w-4" /></ConfirmButton>
                           </td>
                         )}
                       </tr>
@@ -176,7 +178,7 @@ export default function AssetDetail() {
       <Modal open={assign !== undefined} title={assign ? "Modifier l'affectation" : `Affecter ${a.name}`} onClose={() => setAssign(undefined)}>
         {assign !== undefined && (
           <>
-            <div className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
+            <div className="mb-4 rounded-md bg-info-50 px-3 py-2 text-sm text-info-800">
               {a.assigned_quantity} / {a.total_quantity ?? 0} affectées — <b>{a.available_quantity ?? 0} disponible(s)</b>
             </div>
             <AssignmentForm assignment={assign} fixedAssetId={a.id} onCancel={() => setAssign(undefined)} onSaved={() => { setAssign(undefined); reload(); }} />

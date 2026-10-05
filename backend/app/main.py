@@ -7,41 +7,82 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
-from app.api import assets, assignments, auth, contracts, reporting, vendors
+from app.api import (
+    admin_audit,
+    admin_settings,
+    admin_system,
+    assets,
+    assignments,
+    auth,
+    config_api,
+    contracts,
+    inbox,
+    reporting,
+    search,
+    users,
+    vendors,
+)
 from app.core.config import settings
 from app.core.security import hash_password
 from app.database import SessionLocal
-from app.jobs.scheduler import start_scheduler, stop_scheduler
+from app.jobs.scheduler import daily_alerts_job, start_scheduler, stop_scheduler
 from app.models import User
+from app.services import app_settings
+from app.version import VERSION
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
 
 
 async def ensure_default_users():
+    seeds = (
+        (settings.admin_email, settings.admin_password, "ADMIN", "Admin", "Système"),
+        (settings.manager_email, settings.manager_password, "MANAGER", "Gestionnaire", "SI"),
+        (settings.viewer_email, settings.viewer_password, "VIEWER", "Lecture", "Seule"),
+    )
     async with SessionLocal() as db:
-        for email, pwd, role in (
-            (settings.admin_email, settings.admin_password, "ADMIN"),
-            (settings.viewer_email, settings.viewer_password, "VIEWER"),
-        ):
+        for email, pwd, role, first, last in seeds:
             if not email or not pwd:
                 continue
             exists = (await db.execute(select(User).where(User.email == email.lower()))).scalar_one_or_none()
             if exists is None:
-                db.add(User(email=email.lower(), full_name=role.title(), role=role, hashed_password=hash_password(pwd)))
+                db.add(
+                    User(
+                        email=email.lower(),
+                        first_name=first,
+                        last_name=last,
+                        full_name=f"{first} {last}",
+                        role=role,
+                        hashed_password=hash_password(pwd),
+                    )
+                )
                 log.info("Utilisateur %s (%s) créé", email, role)
         await db.commit()
+
+
+async def catch_up_alerts():
+    """Contrôle des échéances au démarrage (idempotent) : rattrape un job manqué pendant un arrêt."""
+    try:
+        await daily_alerts_job()
+    except Exception:  # noqa: BLE001
+        log.exception("Contrôle des alertes au démarrage échoué")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await ensure_default_users()
-    start_scheduler()
+    async with SessionLocal() as db:
+        general = await app_settings.apply_runtime(db)
+        if settings.environment == "production" and settings.secret_key.startswith("change-me"):
+            log.warning("SECRET_KEY par défaut détectée : définissez une clé secrète robuste dans .env")
+    start_scheduler(general["timezone"])
+    if settings.scheduler_enabled:
+        await catch_up_alerts()
     yield
     stop_scheduler()
 
 
-app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(title=settings.app_name, version=VERSION, lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -78,6 +119,20 @@ async def health():
     return {"status": "ok" if db_ok else "degraded", "database": "ok" if db_ok else "unreachable", "version": app.version}
 
 
-for r in (auth.router, vendors.router, contracts.router, assets.router, assignments.router, reporting.router):
+for r in (
+    auth.router,
+    users.router,
+    inbox.router,
+    config_api.router,
+    admin_settings.router,
+    admin_audit.router,
+    admin_system.router,
+    search.router,
+    vendors.router,
+    contracts.router,
+    assets.router,
+    assignments.router,
+    reporting.router,
+):
     api.include_router(r)
 app.include_router(api)

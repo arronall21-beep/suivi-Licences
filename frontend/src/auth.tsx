@@ -1,25 +1,24 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, tokenStore } from "./api";
-
-interface User {
-  id: number;
-  email: string;
-  full_name: string | null;
-  role: "ADMIN" | "VIEWER";
-}
+import type { AppUser } from "./types";
 
 interface AuthCtx {
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
+  /** Vrai pour le rôle ADMIN. */
   isAdmin: boolean;
+  /** Teste une permission (ex. "data:write"). Indication d'interface uniquement : le backend fait foi. */
+  can: (permission: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** Remplace le jeton (après un changement de mot de passe) sans déconnecter l'utilisateur. */
+  adoptToken: (token: string) => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>(null!);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,21 +26,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    api.get<User>("/auth/me").then(setUser).catch(() => tokenStore.clear()).finally(() => setLoading(false));
+    api.get<AppUser>("/auth/me").then(setUser).catch(() => tokenStore.clear()).finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ access_token: string }>("/auth/login", { email, password });
-    tokenStore.set(res.access_token);
-    setUser(await api.get<User>("/auth/me"));
+  const adoptToken = useCallback(async (token: string) => {
+    tokenStore.set(token);
+    setUser(await api.get<AppUser>("/auth/me"));
   }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await api.post<{ access_token: string }>("/auth/login", { email, password });
+      await adoptToken(res.access_token);
+    },
+    [adoptToken],
+  );
 
   const logout = useCallback(() => {
     tokenStore.clear();
     setUser(null);
   }, []);
 
-  return <Ctx.Provider value={{ user, loading, isAdmin: user?.role === "ADMIN", login, logout }}>{children}</Ctx.Provider>;
+  const value = useMemo<AuthCtx>(() => {
+    const perms = new Set(user?.permissions ?? []);
+    return { user, loading, isAdmin: user?.role === "ADMIN", can: (p) => perms.has(p), login, logout, adoptToken };
+  }, [user, loading, login, logout, adoptToken]);
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

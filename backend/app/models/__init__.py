@@ -1,7 +1,13 @@
 from app.models.entities import (
     CATEGORIES,
+    REFERENCE_PREFIXES,
+    REFERENCE_SEQUENCES,
     ROLES,
+    AppNotification,
+    AppNotificationRead,
+    AppSetting,
     Asset,
+    AuditLog,
     Contract,
     ImportLog,
     LicenseAssignment,
@@ -12,8 +18,14 @@ from app.models.entities import (
 
 __all__ = [
     "CATEGORIES",
+    "REFERENCE_PREFIXES",
+    "REFERENCE_SEQUENCES",
     "ROLES",
+    "AppNotification",
+    "AppNotificationRead",
+    "AppSetting",
     "Asset",
+    "AuditLog",
     "Contract",
     "ImportLog",
     "LicenseAssignment",

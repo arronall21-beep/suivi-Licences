@@ -88,6 +88,59 @@ def filter_renewals(items: list[dict], horizon_days: int | None, include_expired
     return out
 
 
+CRITICALITY_POINTS = {"Critique": 4, "Haute": 3, "Moyenne": 2, "Basse": 1}
+TOP_RISKS_LIMIT = 8
+
+
+def risk_score(asset: Asset) -> dict | None:
+    """Score de risque explicable : criticité (1-4) × urgence (1-5) + impact (0-2).
+
+    - criticité : Critique 4, Haute 3, Moyenne 2, Basse 1 (non renseignée : 1)
+    - urgence : expiré 5, critique 4, alerte 2 (OK ou sans date : non retenu)
+    - impact : licence très utilisée (≥ 75 % → +2, ≥ 25 % → +1) ; autre actif rattaché à un contrat (+1)
+    """
+    days = asset.days_remaining
+    if days is None:
+        return None
+    if days <= 0:
+        urgency, urgency_label = 5, f"expiré depuis {-days} j" if days < 0 else "expire aujourd'hui"
+    elif days <= lifecycle.config.critical_days:
+        urgency, urgency_label = 4, f"échéance dans {days} j"
+    elif days <= lifecycle.config.alert_days:
+        urgency, urgency_label = 2, f"échéance dans {days} j"
+    else:
+        return None
+    crit = CRITICALITY_POINTS.get(asset.criticality or "", 1)
+    impact, impact_label = 0, None
+    if asset.category == "LICENCE" and asset.usage_rate is not None:
+        impact = 2 if asset.usage_rate >= 75 else 1 if asset.usage_rate >= 25 else 0
+        impact_label = f"utilisation {asset.usage_rate:g} %" if impact else None
+    elif asset.category != "LICENCE" and asset.contract_id:
+        impact, impact_label = 1, "rattaché à un contrat"
+    reasons = [f"criticité {asset.criticality or 'non renseignée'} (×{crit})", f"{urgency_label} (×{urgency})"]
+    if impact_label:
+        reasons.append(f"{impact_label} (+{impact})")
+    return {
+        "id": asset.id,
+        "reference": asset.reference,
+        "name": asset.name,
+        "category": asset.category,
+        "status": asset.status,
+        "days_remaining": days,
+        "end_date": asset.effective_end_date,
+        "criticality": asset.criticality,
+        "owner": asset.internal_owner,
+        "score": crit * urgency + impact,
+        "reasons": reasons,
+    }
+
+
+def top_risks(assets: list[Asset]) -> list[dict]:
+    scored = [r for a in assets if (r := risk_score(a))]
+    scored.sort(key=lambda r: (-r["score"], r["days_remaining"], r["reference"]))
+    return scored[:TOP_RISKS_LIMIT]
+
+
 async def build_dashboard(db: AsyncSession) -> dict:
     assets, contracts = await load_all(db)
     vendors_count = len(list((await db.execute(select(Vendor.id))).scalars()))
@@ -118,6 +171,7 @@ async def build_dashboard(db: AsyncSession) -> dict:
 
     upcoming = filter_renewals(items, horizon_days=180)[:12]
     return {
+        "thresholds": {"critical_days": lifecycle.config.critical_days, "alert_days": lifecycle.config.alert_days},
         "kpis": {
             "total_assets": len(assets),
             "licences": by_cat.get("LICENCE", 0),
@@ -156,4 +210,5 @@ async def build_dashboard(db: AsyncSession) -> dict:
         "by_category": [{"category": c, "label": CATEGORY_LABELS[c], "count": by_cat.get(c, 0)} for c in CATEGORIES],
         "status_by_category": status_by_category,
         "upcoming_renewals": upcoming,
+        "top_risks": top_risks(assets),
     }

@@ -41,7 +41,7 @@ export default function Renewals() {
       <div className="card mb-4 flex flex-wrap items-center gap-3 p-4">
         <div className="flex rounded-md border border-slate-300 bg-white p-0.5">
           {HORIZONS.map((h) => (
-            <button key={h.v} onClick={() => setHorizon(h.v)} className={`rounded px-3 py-1.5 text-sm ${horizon === h.v ? "bg-blue-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button key={h.v} onClick={() => setHorizon(h.v)} className={`rounded px-3 py-1.5 text-sm ${horizon === h.v ? "bg-brand-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
               {h.l}
             </button>
           ))}
@@ -67,27 +67,26 @@ export default function Renewals() {
       <div className="space-y-4">
         {months.map(([key, items]) => (
           <div key={key} className="card overflow-hidden">
-            <div className={`flex items-center gap-2 border-b px-5 py-3 text-sm font-semibold ${key === "0000-00" ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-50 text-slate-800"}`}>
+            <div className={`flex items-center gap-2 border-b px-5 py-3 text-sm font-semibold ${key === "0000-00" ? "border-danger-200 bg-danger-50 text-danger-800" : "border-slate-200 bg-slate-50 text-slate-800"}`}>
               <CalendarClock className="h-4 w-4" />
               {key === "0000-00" ? "En retard (mois précédents)" : new Date(key + "-01T00:00:00").toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
               <span className="font-normal text-slate-500">— {items.length} élément(s)</span>
             </div>
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] table-fixed divide-y divide-slate-100">
-              <colgroup><col className="w-[26%]" /><col className="w-[9%]" /><col className="w-[9%]" /><col className="w-[15%]" /><col className="w-[9%]" /><col className="w-[6%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /></colgroup>
-              <thead><tr><th className="th">Actif / Contrat</th><th className="th">Type</th><th className="th">Échéance</th><th className="th">Début renouv.</th><th className="th">Jours</th><th className="th">Prio.</th><th className="th">Responsable</th><th className="th">Statut</th><th className="th text-right">Budget</th></tr></thead>
+            <table className="w-full min-w-[900px] divide-y divide-slate-100">
+                            <thead><tr><th className="th">Actif / Contrat</th><th className="th">Type</th><th className="th">Échéance</th><th className="th">Début renouv.</th><th className="th">Jours</th><th className="th">Prio.</th><th className="th">Responsable</th><th className="th">Statut</th><th className="th text-right">Budget</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {items.map((r) => (
                   <tr key={`${r.kind}-${r.id}`} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(r.kind === "ASSET" ? `/actifs/fiche/${r.id}` : `/contrats?focus=${r.id}`)}>
-                    <td className="td"><div className="truncate font-medium text-slate-900" title={r.name}>{r.name}</div><div className="truncate text-xs text-slate-500">{r.reference}{r.vendor_name ? ` · ${r.vendor_name}` : ""}</div></td>
+                    <td className="td"><div className="font-medium text-slate-900" title={r.name}>{r.name}</div><div className="text-xs text-slate-500">{r.reference}{r.vendor_name ? ` · ${r.vendor_name}` : ""}</div></td>
                     <td className="td">{CATEGORY_LABELS[r.type]}</td>
                     <td className="td">{fmtDate(r.end_date)}</td>
-                    <td className={`td ${r.notice_reached && r.status !== "EXPIRE" ? "font-semibold text-orange-700" : ""}`}>
+                    <td className={`td ${r.notice_reached && r.status !== "EXPIRE" ? "font-semibold text-caution-700" : ""}`}>
                       {r.kind === "CONTRACT" ? <>{fmtDate(r.renewal_start_date)}<div className="text-xs font-normal text-slate-500">préavis {r.notice_period_days ?? 0} j</div></> : "—"}
                     </td>
                     <td className="td"><DaysCell days={r.days_remaining} /></td>
                     <td className="td"><PriorityBadge value={r.priority} /></td>
-                    <td className="td truncate" title={r.owner ?? ""}>{r.owner ?? "—"}</td>
+                    <td className="td" title={r.owner ?? ""}>{r.owner ?? "—"}</td>
                     <td className="td"><StatusBadge status={r.status} /></td>
                     <td className="td text-right tabular-nums">{fmtMoney(r.budget)}</td>
                   </tr>

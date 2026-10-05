@@ -2,9 +2,11 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, AdminUser, CurrentUser, get_or_404
+from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
 from app.models import Contract, Vendor
 from app.schemas import ContractIn, ContractOut
+from app.services.audit import Audit, changed_fields
+from app.services.references import next_reference
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -45,34 +47,44 @@ async def get_contract(contract_id: int, db: DB, _: CurrentUser):
 
 
 @router.post("", response_model=ContractOut, status_code=201)
-async def create_contract(body: ContractIn, db: DB, _: AdminUser):
+async def create_contract(body: ContractIn, db: DB, user: WriterUser, audit: Audit):
     await _check_vendor(db, body.vendor_id)
-    c = Contract(**body.model_dump())
+    data = body.model_dump()
+    if not data["reference"]:
+        data["reference"] = await next_reference(db, "CONTRACT")
+    c = Contract(**data)
     db.add(c)
     try:
         await db.commit()
     except IntegrityError:
         raise HTTPException(409, "Référence contrat déjà existante") from None
+    await audit.log(user, "CONTRACT_CREATE", "CONTRACT", c.id, c.reference)
     return await get_or_404(db, Contract, c.id)
 
 
 @router.put("/{contract_id}", response_model=ContractOut)
-async def update_contract(contract_id: int, body: ContractIn, db: DB, _: AdminUser):
+async def update_contract(contract_id: int, body: ContractIn, db: DB, user: WriterUser, audit: Audit):
     c = await get_or_404(db, Contract, contract_id)
     await _check_vendor(db, body.vendor_id)
+    changed = changed_fields(c, body.model_dump(), skip=("reference",) if not body.reference else ())
     for k, v in body.model_dump().items():
+        if k == "reference" and not v:
+            continue
         setattr(c, k, v)
     try:
         await db.commit()
     except IntegrityError:
         raise HTTPException(409, "Référence contrat déjà existante") from None
+    await audit.log(user, "CONTRACT_UPDATE", "CONTRACT", contract_id, c.reference, details={"champs": changed})
     db.expire(c)
     return await get_or_404(db, Contract, contract_id)
 
 
 @router.delete("/{contract_id}", status_code=204)
-async def delete_contract(contract_id: int, db: DB, _: AdminUser):
+async def delete_contract(contract_id: int, db: DB, user: DeleterUser, audit: Audit):
     c = await get_or_404(db, Contract, contract_id)
+    reference = c.reference
     await db.delete(c)
     await db.commit()
+    await audit.log(user, "CONTRACT_DELETE", "CONTRACT", contract_id, reference)
     return Response(status_code=204)
