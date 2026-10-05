@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
 from app.models import Asset, Contract, Vendor
 from app.schemas import VendorIn, VendorOut
+from app.services.audit import Audit, changed_fields
 from app.services.references import next_reference
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -24,7 +25,7 @@ async def get_vendor(vendor_id: int, db: DB, _: CurrentUser):
 
 
 @router.post("", response_model=VendorOut, status_code=201)
-async def create_vendor(body: VendorIn, db: DB, _: WriterUser):
+async def create_vendor(body: VendorIn, db: DB, user: WriterUser, audit: Audit):
     v = Vendor(**body.model_dump(), reference=await next_reference(db, "VENDOR"))
     db.add(v)
     try:
@@ -32,12 +33,14 @@ async def create_vendor(body: VendorIn, db: DB, _: WriterUser):
     except IntegrityError:
         raise HTTPException(409, "Un fournisseur avec ce nom existe déjà") from None
     await db.refresh(v)
+    await audit.log(user, "VENDOR_CREATE", "VENDOR", v.id, f"{v.reference} — {v.name}")
     return v
 
 
 @router.put("/{vendor_id}", response_model=VendorOut)
-async def update_vendor(vendor_id: int, body: VendorIn, db: DB, _: WriterUser):
+async def update_vendor(vendor_id: int, body: VendorIn, db: DB, user: WriterUser, audit: Audit):
     v = await get_or_404(db, Vendor, vendor_id)
+    changed = changed_fields(v, body.model_dump())
     for k, val in body.model_dump().items():
         setattr(v, k, val)
     try:
@@ -45,16 +48,19 @@ async def update_vendor(vendor_id: int, body: VendorIn, db: DB, _: WriterUser):
     except IntegrityError:
         raise HTTPException(409, "Un fournisseur avec ce nom existe déjà") from None
     await db.refresh(v)
+    await audit.log(user, "VENDOR_UPDATE", "VENDOR", v.id, f"{v.reference} — {v.name}", details={"champs": changed})
     return v
 
 
 @router.delete("/{vendor_id}", status_code=204)
-async def delete_vendor(vendor_id: int, db: DB, _: DeleterUser):
+async def delete_vendor(vendor_id: int, db: DB, user: DeleterUser, audit: Audit):
     v = await get_or_404(db, Vendor, vendor_id)
     used = (await db.execute(select(func.count()).select_from(Asset).where(Asset.vendor_id == vendor_id))).scalar_one()
     used += (await db.execute(select(func.count()).select_from(Contract).where(Contract.vendor_id == vendor_id))).scalar_one()
     if used:
         raise HTTPException(409, f"Fournisseur utilisé par {used} actif(s)/contrat(s) : suppression impossible")
+    label = f"{v.reference} — {v.name}"
     await db.delete(v)
     await db.commit()
+    await audit.log(user, "VENDOR_DELETE", "VENDOR", vendor_id, label)
     return Response(status_code=204)

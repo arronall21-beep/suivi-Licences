@@ -8,7 +8,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 
 from app.api import (
+    admin_audit,
     admin_settings,
+    admin_system,
     assets,
     assignments,
     auth,
@@ -16,6 +18,7 @@ from app.api import (
     contracts,
     inbox,
     reporting,
+    search,
     users,
     vendors,
 )
@@ -122,6 +125,9 @@ for r in (
     inbox.router,
     config_api.router,
     admin_settings.router,
+    admin_audit.router,
+    admin_system.router,
+    search.router,
     vendors.router,
     contracts.router,
     assets.router,

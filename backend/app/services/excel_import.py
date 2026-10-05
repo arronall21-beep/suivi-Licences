@@ -351,7 +351,9 @@ class Importer:
         return created
 
 
-async def import_workbook(db: AsyncSession, content: bytes, filename: str, user: str | None = None) -> dict:
+async def import_workbook(
+    db: AsyncSession, content: bytes, filename: str, user: str | None = None, file_size: int | None = None
+) -> dict:
     report = Report(filename=filename)
     try:
         wb = load_workbook(io.BytesIO(content), data_only=True, read_only=False)
@@ -407,6 +409,8 @@ async def import_workbook(db: AsyncSession, content: bytes, filename: str, user:
             errors_count=result["errors_count"],
             report=json.dumps(result, default=str, ensure_ascii=False),
             imported_by=user,
+            file_size=file_size,
+            status="ERRORS" if result["errors_count"] else ("WARNINGS" if result["warnings_count"] else "SUCCESS"),
         )
     )
     await db.commit()

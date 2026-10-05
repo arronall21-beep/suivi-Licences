@@ -254,6 +254,8 @@ class ImportLog(Base):
     errors_count: Mapped[int] = mapped_column(Integer, default=0)
     report: Mapped[str | None] = mapped_column(Text)  # JSON
     imported_by: Mapped[str | None] = mapped_column(String(255))
+    file_size: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), default="SUCCESS", server_default="SUCCESS")  # SUCCESS/WARNINGS/ERRORS/FAILED
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -293,3 +295,21 @@ class AppSetting(Base):
     is_secret: Mapped[bool] = mapped_column(default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     updated_by: Mapped[str | None] = mapped_column(String(255))
+
+
+class AuditLog(Base):
+    """Journal d'audit des actions administratives et métier sensibles. Écriture seule (pas de modification)."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer)
+    user_email: Mapped[str | None] = mapped_column(String(255), index=True)
+    action: Mapped[str] = mapped_column(String(50), index=True)
+    entity_type: Mapped[str | None] = mapped_column(String(30), index=True)
+    entity_id: Mapped[str | None] = mapped_column(String(50))
+    entity_label: Mapped[str | None] = mapped_column(String(255))
+    result: Mapped[str] = mapped_column(String(10), default="SUCCESS")  # SUCCESS / FAILURE
+    details: Mapped[str | None] = mapped_column(Text)
+    ip_address: Mapped[str | None] = mapped_column(String(64))

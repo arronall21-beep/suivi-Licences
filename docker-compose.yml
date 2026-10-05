@@ -32,6 +32,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./data:/data:ro
+      - ./backups:/backups:ro
     networks: [suivi]
 
   frontend:

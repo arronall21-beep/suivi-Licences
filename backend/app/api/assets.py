@@ -6,6 +6,7 @@ from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
 from app.core import lifecycle
 from app.models import Asset, Contract, Vendor
 from app.schemas import AssetDetailOut, AssetIn, AssetPage
+from app.services.audit import Audit, changed_fields
 from app.services.references import next_reference
 
 router = APIRouter(prefix="/assets", tags=["assets"])
@@ -129,7 +130,7 @@ async def _validate(db, body: AssetIn, asset: Asset | None = None):
 
 
 @router.post("", response_model=AssetDetailOut, status_code=201)
-async def create_asset(body: AssetIn, db: DB, _: WriterUser):
+async def create_asset(body: AssetIn, db: DB, user: WriterUser, audit: Audit):
     await _validate(db, body)
     data = body.model_dump()
     if not data["reference"]:
@@ -140,13 +141,15 @@ async def create_asset(body: AssetIn, db: DB, _: WriterUser):
         await db.commit()
     except IntegrityError:
         raise HTTPException(409, "Référence déjà existante pour cette catégorie") from None
+    await audit.log(user, "ASSET_CREATE", "ASSET", a.id, f"{a.reference} — {a.name}", details={"categorie": a.category})
     return await get_or_404(db, Asset, a.id)
 
 
 @router.put("/{asset_id}", response_model=AssetDetailOut)
-async def update_asset(asset_id: int, body: AssetIn, db: DB, _: WriterUser):
+async def update_asset(asset_id: int, body: AssetIn, db: DB, user: WriterUser, audit: Audit):
     a = await get_or_404(db, Asset, asset_id)
     await _validate(db, body, a)
+    changed = changed_fields(a, body.model_dump(), skip=("reference",) if not body.reference else ())
     for k, v in body.model_dump().items():
         if k == "reference" and not v:
             continue  # la référence existante est conservée
@@ -155,13 +158,16 @@ async def update_asset(asset_id: int, body: AssetIn, db: DB, _: WriterUser):
         await db.commit()
     except IntegrityError:
         raise HTTPException(409, "Référence déjà existante pour cette catégorie") from None
+    await audit.log(user, "ASSET_UPDATE", "ASSET", asset_id, f"{a.reference} — {a.name}", details={"champs": changed})
     db.expire(a)
     return await get_or_404(db, Asset, asset_id)
 
 
 @router.delete("/{asset_id}", status_code=204)
-async def delete_asset(asset_id: int, db: DB, _: DeleterUser):
+async def delete_asset(asset_id: int, db: DB, user: DeleterUser, audit: Audit):
     a = await get_or_404(db, Asset, asset_id)
+    label, n_assign = f"{a.reference} — {a.name}", len(a.assignments)
     await db.delete(a)
     await db.commit()
+    await audit.log(user, "ASSET_DELETE", "ASSET", asset_id, label, details={"affectations_supprimees": n_assign})
     return Response(status_code=204)

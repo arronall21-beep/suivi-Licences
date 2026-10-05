@@ -7,6 +7,7 @@ from app.core.permissions import PERMISSION_LABELS, ROLE_DESCRIPTIONS, ROLE_LABE
 from app.core.security import hash_password
 from app.models import ROLES, User
 from app.schemas import PasswordReset, UserCreate, UserOut, UserUpdate
+from app.services.audit import Audit, changed_fields
 
 router = APIRouter(tags=["users"])
 
@@ -53,7 +54,7 @@ async def list_users(
 
 
 @router.post("/users", response_model=UserOut, status_code=201)
-async def create_user(body: UserCreate, db: DB, admin: AdminUser):
+async def create_user(body: UserCreate, db: DB, admin: AdminUser, audit: Audit):
     user = User(
         email=str(body.email).lower(),
         first_name=body.first_name,
@@ -72,15 +73,18 @@ async def create_user(body: UserCreate, db: DB, admin: AdminUser):
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Cette adresse email est déjà utilisée") from None
     await db.refresh(user)
+    await audit.log(admin, "USER_CREATE", "USER", user.id, user.email, details={"role": user.role})
     return user
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
-async def update_user(user_id: int, body: UserUpdate, db: DB, admin: AdminUser):
+async def update_user(user_id: int, body: UserUpdate, db: DB, admin: AdminUser, audit: Audit):
     user = await get_or_404(db, User, user_id)
     if user.role == "ADMIN" and body.role != "ADMIN" and user.is_active and await _other_active_admins(db, user.id) == 0:
         raise HTTPException(status.HTTP_409_CONFLICT, "Impossible de retirer le rôle ADMIN du dernier administrateur actif")
     new_email = str(body.email).lower()
+    old_role = user.role
+    changed = changed_fields(user, {**body.model_dump(), "email": new_email}, skip=("role",))
     if new_email != user.email:
         user.token_version += 1  # l'email est le sujet du jeton : les sessions en cours sont invalidées
     user.email, user.first_name, user.last_name = new_email, body.first_name, body.last_name
@@ -92,11 +96,15 @@ async def update_user(user_id: int, body: UserUpdate, db: DB, admin: AdminUser):
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Cette adresse email est déjà utilisée") from None
     await db.refresh(user)
+    if changed:
+        await audit.log(admin, "USER_UPDATE", "USER", user.id, user.email, details={"champs": changed})
+    if old_role != user.role:
+        await audit.log(admin, "USER_ROLE_CHANGE", "USER", user.id, user.email, details={"de": old_role, "vers": user.role})
     return user
 
 
 @router.post("/users/{user_id}/deactivate", response_model=UserOut)
-async def deactivate_user(user_id: int, db: DB, admin: AdminUser):
+async def deactivate_user(user_id: int, db: DB, admin: AdminUser, audit: Audit):
     user = await get_or_404(db, User, user_id)
     if user.id == admin.id:
         raise HTTPException(status.HTTP_409_CONFLICT, "Vous ne pouvez pas désactiver votre propre compte")
@@ -106,25 +114,28 @@ async def deactivate_user(user_id: int, db: DB, admin: AdminUser):
     user.token_version += 1
     await db.commit()
     await db.refresh(user)
+    await audit.log(admin, "USER_DEACTIVATE", "USER", user.id, user.email)
     return user
 
 
 @router.post("/users/{user_id}/reactivate", response_model=UserOut)
-async def reactivate_user(user_id: int, db: DB, admin: AdminUser):
+async def reactivate_user(user_id: int, db: DB, admin: AdminUser, audit: Audit):
     user = await get_or_404(db, User, user_id)
     user.is_active = True
     await db.commit()
     await db.refresh(user)
+    await audit.log(admin, "USER_REACTIVATE", "USER", user.id, user.email)
     return user
 
 
 @router.post("/users/{user_id}/reset-password", response_model=UserOut)
-async def reset_password(user_id: int, body: PasswordReset, db: DB, admin: AdminUser):
+async def reset_password(user_id: int, body: PasswordReset, db: DB, admin: AdminUser, audit: Audit):
     user = await get_or_404(db, User, user_id)
     user.hashed_password = hash_password(body.password)
     user.token_version += 1  # toutes les sessions de l'utilisateur sont invalidées
     await db.commit()
     await db.refresh(user)
+    await audit.log(admin, "USER_PASSWORD_RESET", "USER", user.id, user.email)
     return user
 
 
