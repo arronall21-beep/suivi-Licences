@@ -86,7 +86,7 @@ export default function NotificationBell() {
             {items?.length === 0 && <li className="px-4 py-6 text-center text-sm text-slate-500">Aucune notification</li>}
             {items?.map((n) => (
               <li key={n.id}>
-                <button className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-slate-50 ${n.read ? "" : "bg-brand-50/60"}`} onClick={() => openItem(n)}>
+                <button className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-slate-50 ${n.read ? "" : "bg-info-50/60"}`} onClick={() => openItem(n)}>
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : NOTIFICATION_PRIORITY[n.priority].dot}`} />
                   <span className="min-w-0">
                     <span className={`block truncate text-sm ${n.read ? "text-slate-600" : "font-semibold text-slate-900"}`}>{n.title}</span>

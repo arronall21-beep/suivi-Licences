@@ -64,7 +64,7 @@ export default function Contracts() {
             <thead className="bg-slate-50">
               <tr>
                 <th className="th">Référence</th><th className="th">Fournisseur</th><th className="th">Type / périmètre</th><th className="th">Responsable</th>
-                <th className="th">Fin</th><th className="th">Préavis</th><th className="th">Début renouvellement</th><th className="th">Jours restants</th>
+                <th className="th">Fin</th><th className="th">Début renouvellement</th><th className="th">Jours restants</th>
                 <th className="th">Échéance</th><th className="th text-right">Montant annuel</th><th className="th">Statut</th><th className="th" />
               </tr>
             </thead>
@@ -72,21 +72,22 @@ export default function Contracts() {
               {data?.map((c) => {
                 const noticeReached = c.renewal_start_date && new Date(c.renewal_start_date) <= new Date();
                 return (
-                  <tr key={c.id} id={`c-${c.id}`} className={focus === c.id ? "bg-brand-50" : "hover:bg-slate-50"}>
+                  <tr key={c.id} id={`c-${c.id}`} className={focus === c.id ? "bg-info-50" : "hover:bg-slate-50"}>
                     <td className="td">
                       <div className="font-mono text-xs font-medium text-slate-800">{c.reference}</div>
                       {c.market_ref && <div className="text-xs text-slate-500">Marché {c.market_ref}</div>}
                     </td>
                     <td className="td">{c.vendor_name ?? "—"}</td>
-                    <td className="td max-w-xs">
-                      <div className="truncate">{c.type ?? "—"}</div>
-                      <div className="truncate text-xs text-slate-500" title={c.scope ?? ""}>{c.scope}</div>
+                    <td className="td min-w-[10rem] max-w-[14rem]">
+                      <div>{c.type ?? "—"}</div>
+                      <div className="text-xs text-slate-500" title={c.scope ?? ""}>{c.scope}</div>
                     </td>
                     <td className="td">{c.internal_owner ?? "—"}</td>
                     <td className="td">{fmtDate(c.end_date)}</td>
-                    <td className="td">{c.notice_period_days != null ? `${c.notice_period_days} j` : "—"}</td>
+                    
                     <td className={`td ${noticeReached && c.lifecycle_status !== "EXPIRE" ? "font-semibold text-caution-700" : ""}`}>
                       {fmtDate(c.renewal_start_date)}
+                      {c.notice_period_days != null && <div className="text-xs font-normal text-slate-500">préavis {c.notice_period_days} j</div>}
                       {noticeReached && c.lifecycle_status !== "EXPIRE" && <div className="text-xs font-normal">Préavis atteint</div>}
                     </td>
                     <td className="td"><DaysCell days={c.days_remaining} /></td>

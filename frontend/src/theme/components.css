@@ -31,13 +31,13 @@
     @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand-700 text-white shadow-sm hover:bg-brand-800;
+    @apply btn bg-brand-500 font-semibold text-white shadow-sm hover:bg-brand-600 active:bg-brand-700;
   }
   .btn-secondary {
     @apply btn border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50;
   }
   .btn-danger {
-    @apply btn bg-danger-600 text-white shadow-sm hover:bg-danger-700;
+    @apply btn bg-brand-800 font-semibold text-white shadow-sm hover:bg-brand-900;
   }
   .btn-ghost {
     @apply btn px-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800;
@@ -57,30 +57,34 @@
   }
 
   .th {
-    @apply whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply px-2 py-2.5 text-left align-bottom text-[11px] font-semibold uppercase leading-tight tracking-wide text-slate-500;
   }
   .td {
-    @apply whitespace-nowrap px-3 py-2.5 text-sm text-slate-700;
+    @apply px-2 py-2.5 align-middle text-[13px] leading-snug text-slate-700;
+  }
+  /* Cellules d'actions et de valeurs courtes : jamais de retour à la ligne */
+  .td:has(.btn-ghost, .badge, .btn-sm) {
+    @apply whitespace-nowrap;
   }
   .table-head {
     @apply bg-slate-50;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset;
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset;
   }
 
-  /* Navigation latérale */
+  /* Navigation latérale (fond rouge SBEE, texte blanc) */
   .nav-section {
-    @apply px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-brand-300/80;
+    @apply px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-white/80;
   }
   .nav-link {
-    @apply flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium text-brand-100/90 transition hover:bg-white/10 hover:text-white;
+    @apply flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium text-white transition hover:bg-black/15;
   }
   .nav-link-active {
-    @apply bg-white/10 text-white shadow-[inset_3px_0_0_rgb(var(--accent-500))];
+    @apply bg-black/20 font-semibold shadow-[inset_3px_0_0_rgb(var(--accent-500))];
   }
   .nav-sub {
-    @apply flex items-center gap-3 rounded-md py-1 pl-9 pr-3 text-sm text-brand-200/80 transition hover:bg-white/10 hover:text-white;
+    @apply flex items-center gap-3 rounded-md py-1 pl-9 pr-3 text-sm text-white/90 transition hover:bg-black/15 hover:text-white;
   }
 }

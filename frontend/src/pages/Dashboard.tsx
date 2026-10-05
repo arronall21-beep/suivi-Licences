@@ -6,10 +6,10 @@ import { CATEGORY_LABELS, CATEGORY_SLUG, fmtDate, fmtMoney, fmtMoneyCompact, fmt
 import { CHART, STATUS_META } from "../theme";
 import { useFetch } from "../hooks";
 import type { Dashboard as D, Status } from "../types";
-import { Card, CardHeader, CriticalityBadge, DaysCell, EmptyState, InfoTip, PageHeader, PriorityBadge, Spinner, StatusBadge } from "../components/ui";
+import { Card, CardHeader, CriticalityBadge, DaysCell, EmptyState, InfoTip, PageHeader, PriorityBadge, Spinner, StatusBadge, Watermark } from "../components/ui";
 
 function Kpi({ label, value, sub, icon, tone = "slate", to, small }: { label: string; value: ReactNode; sub?: ReactNode; icon: ReactNode; tone?: "slate" | "blue" | "orange" | "red"; to?: string; small?: boolean }) {
-  const tones = { slate: "bg-slate-100 text-slate-600", blue: "bg-brand-100 text-brand-700", orange: "bg-caution-100 text-caution-700", red: "bg-danger-100 text-danger-700" };
+  const tones = { slate: "bg-slate-100 text-slate-600", blue: "bg-info-100 text-info-700", orange: "bg-caution-100 text-caution-700", red: "bg-danger-100 text-danger-700" };
   const body = (
     <div className="card flex h-full items-start justify-between gap-3 p-5 transition hover:shadow-md">
       <div className="min-w-0">
@@ -61,7 +61,10 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Tableau de bord" subtitle={`Situation au ${new Date().toLocaleDateString("fr-FR", { dateStyle: "long" })} — données issues de la base`} />
+      <div className="relative">
+        <Watermark className="-top-8 right-0 h-28 w-28" />
+        <PageHeader title="Tableau de bord" subtitle={`Situation au ${new Date().toLocaleDateString("fr-FR", { dateStyle: "long" })} — données issues de la base`} />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Actifs suivis" value={fmtNum(k.total_assets)} icon={<Boxes className="h-5 w-5" />} tone="blue" to="/actifs"

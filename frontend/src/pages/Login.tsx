@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Alert, BrandLogo, Button, Field, FormError, Modal, PasswordInput } from "../components/ui";
+import { Alert, BrandLogo, Button, Field, FormError, hasOfficialLogo, Modal, PasswordInput, Watermark } from "../components/ui";
 import { brand } from "../theme";
 
 interface PublicConfig {
@@ -98,13 +98,16 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 p-4">
-      <div className="w-full max-w-sm">
-        <form onSubmit={submit} className="rounded-2xl bg-white p-8 shadow-2xl">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-brand-500 via-brand-500 to-brand-700 p-4">
+      {/* Trame décorative (symbole du logo, 7 % d'opacité) : rendue uniquement si le symbole officiel est fourni */}
+      <Watermark tone="light" className="-bottom-28 -right-28 h-[36rem] w-[36rem]" />
+      <div className="relative w-full max-w-sm">
+        <form onSubmit={submit} className="overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="h-1.5 bg-accent-500" aria-hidden="true" />
+          <div className="p-8">
           <div className="mb-7 flex flex-col items-center text-center">
-            <BrandLogo className="h-14" />
-            <h1 className="mt-5 text-xl font-semibold text-slate-900">{cfg?.app_name ?? brand.defaultApplication}</h1>
-            <p className="mt-1 text-sm text-slate-500">{brand.organizationFullName}</p>
+            {hasOfficialLogo ? <BrandLogo height={72} className="mb-5" /> : <p className="mb-2 text-sm font-medium text-slate-600">{brand.organizationFullName}</p>}
+            <h1 className="text-xl font-semibold text-slate-900">{cfg?.app_name ?? brand.defaultApplication}</h1>
           </div>
           <Field label="Email" required className="mb-3">
             <input className="input" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -116,11 +119,12 @@ export default function Login() {
           <Button className="mt-4 w-full" type="submit" loading={busy}>
             Se connecter
           </Button>
-          <button type="button" className="mt-4 block w-full text-center text-sm text-brand-700 hover:underline" onClick={() => setForgot(true)}>
+          <button type="button" className="mt-4 block w-full text-center text-sm font-medium text-brand-700 hover:underline" onClick={() => setForgot(true)}>
             Mot de passe oublié ?
           </button>
+          </div>
         </form>
-        <p className="mt-4 text-center text-xs text-brand-200/80">
+        <p className="mt-4 text-center text-xs text-white/90">
           {cfg?.org_name ?? brand.defaultOrganization}
           {cfg?.version && ` · v${cfg.version}`}
         </p>

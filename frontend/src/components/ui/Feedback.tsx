@@ -1,4 +1,5 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { Watermark } from "./Logo";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
 export function Spinner({ label = "Chargement…" }: { label?: string }) {
@@ -11,16 +12,17 @@ export function Spinner({ label = "Chargement…" }: { label?: string }) {
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-14 text-center">
-      <div className="text-sm font-medium text-slate-700">{title}</div>
-      {children && <div className="text-sm text-slate-500">{children}</div>}
+    <div className="relative flex flex-col items-center justify-center gap-2 overflow-hidden py-14 text-center">
+      <Watermark className="left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2" />
+      <div className="relative text-sm font-medium text-slate-700">{title}</div>
+      {children && <div className="relative text-sm text-slate-500">{children}</div>}
     </div>
   );
 }
 
 type AlertKind = "info" | "success" | "warning" | "danger";
 const ALERT: Record<AlertKind, { cls: string; Icon: typeof Info }> = {
-  info: { cls: "border-brand-200 bg-brand-50 text-brand-800", Icon: Info },
+  info: { cls: "border-info-200 bg-info-50 text-info-800", Icon: Info },
   success: { cls: "border-success-200 bg-success-50 text-success-800", Icon: CheckCircle2 },
   warning: { cls: "border-warning-200 bg-warning-50 text-warning-800", Icon: AlertTriangle },
   danger: { cls: "border-danger-200 bg-danger-50 text-danger-800", Icon: AlertCircle },

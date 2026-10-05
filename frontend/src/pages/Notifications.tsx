@@ -73,7 +73,7 @@ function Inbox() {
           const p = NOTIFICATION_PRIORITY[n.priority];
           return (
             <li key={n.id}>
-              <button className={`flex w-full items-start gap-3 px-5 py-3.5 text-left hover:bg-slate-50 ${n.read ? "" : "bg-brand-50/50"}`} onClick={() => open(n)}>
+              <button className={`flex w-full items-start gap-3 px-5 py-3.5 text-left hover:bg-slate-50 ${n.read ? "" : "bg-info-50/60"}`} onClick={() => open(n)}>
                 <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-slate-200" : p.dot}`} aria-label={n.read ? "Lue" : "Non lue"} />
                 <span className="min-w-0 flex-1">
                   <span className={`block text-sm ${n.read ? "text-slate-700" : "font-semibold text-slate-900"}`}>{n.title}</span>

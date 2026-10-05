@@ -18,7 +18,7 @@ Le fichier métier `Suivi_Licence.xlsx` sert de source de référence : il est i
 | **Export Excel** | Les 7 onglets métier (`Licences_Logicielles`, `Certificats`, `Materiels`, `Applications`, `Contrats_Fournisseurs`, `Planning_Renouvellement`, `Dashboard`). Dates JJ/MM/AAAA, statuts colorés, fichier ré-importable. |
 | **Administration (V1.1)** | Utilisateurs et rôles **ADMIN / MANAGER / VIEWER** (RBAC vérifié côté serveur), paramètres généraux (organisation, devise, fuseau, seuils), **SMTP configurable depuis l'interface** (mot de passe chiffré, tests), configuration des alertes, journal d'audit, notifications internes, état du système et de la sauvegarde. Voir [docs/ADMIN.md](docs/ADMIN.md). |
 | **Références automatiques** | `LIC-001`, `CERT-001`, `MAT-001`, `APP-001`, `CTR-001`, `VEN-001` générées côté serveur par séquences PostgreSQL. |
-| **Charte SBEE** | Design system centralisé (`frontend/src/theme`, `components/ui`), logo configurable sans modifier les composants. |
+| **Charte SBEE** | Identité conforme à la charte graphique officielle (rouge `#ED1F24`, Poppins, logotype officiel, trame du symbole), design system centralisé (`frontend/src/theme`, `components/ui`). Voir [docs/ADMIN.md](docs/ADMIN.md). |
 | **Sécurité** | JWT à durée limitée et invalidable immédiatement, mots de passe hachés (bcrypt) avec politique minimale, limitation des échecs de connexion, secrets chiffrés en base, CORS, validation Pydantic, limite de taille d'upload, erreurs centralisées. |
 
 ## Architecture
@@ -90,7 +90,6 @@ Ensuite, gérer les comptes depuis **Administration → Utilisateurs** (rôles, 
 | `ORGANIZATION_NAME`, `APPLICATION_NAME`, `CURRENCY`, `DEFAULT_TIMEZONE`, `CRITICAL_DAYS`, `ALERT_DAYS` | Valeurs de départ des paramètres généraux (ensuite modifiables dans Administration → Paramètres) |
 | `CORS_ORIGINS` | Origines autorisées, séparées par des virgules |
 | `MAX_UPLOAD_MB` | Taille maximale du fichier Excel (10 Mo par défaut) |
-| `VITE_CURRENCY`, `VITE_LOGO_URL`, `VITE_LOGO_DARK_URL` | Variables de build du frontend : logo (voir `frontend/public/branding/README.md`) |
 | `BACKUP_DIR` | Répertoire des sauvegardes lu par Administration → Système (`./backups` monté dans le conteneur) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`, `SMTP_SECURITY` | Valeurs de repli pour l'envoi des alertes : la configuration saisie dans **Administration → SMTP** est prioritaire |
 | `ALERT_RECIPIENTS` | Adresses personnalisées de départ pour les alertes (ensuite : Administration → Paramètres) |

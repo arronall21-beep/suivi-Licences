@@ -73,13 +73,12 @@ export default function Renewals() {
               <span className="font-normal text-slate-500">— {items.length} élément(s)</span>
             </div>
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] table-fixed divide-y divide-slate-100">
-              <colgroup><col className="w-[26%]" /><col className="w-[9%]" /><col className="w-[9%]" /><col className="w-[15%]" /><col className="w-[9%]" /><col className="w-[6%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /></colgroup>
-              <thead><tr><th className="th">Actif / Contrat</th><th className="th">Type</th><th className="th">Échéance</th><th className="th">Début renouv.</th><th className="th">Jours</th><th className="th">Prio.</th><th className="th">Responsable</th><th className="th">Statut</th><th className="th text-right">Budget</th></tr></thead>
+            <table className="w-full min-w-[900px] divide-y divide-slate-100">
+                            <thead><tr><th className="th">Actif / Contrat</th><th className="th">Type</th><th className="th">Échéance</th><th className="th">Début renouv.</th><th className="th">Jours</th><th className="th">Prio.</th><th className="th">Responsable</th><th className="th">Statut</th><th className="th text-right">Budget</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {items.map((r) => (
                   <tr key={`${r.kind}-${r.id}`} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(r.kind === "ASSET" ? `/actifs/fiche/${r.id}` : `/contrats?focus=${r.id}`)}>
-                    <td className="td"><div className="truncate font-medium text-slate-900" title={r.name}>{r.name}</div><div className="truncate text-xs text-slate-500">{r.reference}{r.vendor_name ? ` · ${r.vendor_name}` : ""}</div></td>
+                    <td className="td"><div className="font-medium text-slate-900" title={r.name}>{r.name}</div><div className="text-xs text-slate-500">{r.reference}{r.vendor_name ? ` · ${r.vendor_name}` : ""}</div></td>
                     <td className="td">{CATEGORY_LABELS[r.type]}</td>
                     <td className="td">{fmtDate(r.end_date)}</td>
                     <td className={`td ${r.notice_reached && r.status !== "EXPIRE" ? "font-semibold text-caution-700" : ""}`}>
@@ -87,7 +86,7 @@ export default function Renewals() {
                     </td>
                     <td className="td"><DaysCell days={r.days_remaining} /></td>
                     <td className="td"><PriorityBadge value={r.priority} /></td>
-                    <td className="td truncate" title={r.owner ?? ""}>{r.owner ?? "—"}</td>
+                    <td className="td" title={r.owner ?? ""}>{r.owner ?? "—"}</td>
                     <td className="td"><StatusBadge status={r.status} /></td>
                     <td className="td text-right tabular-nums">{fmtMoney(r.budget)}</td>
                   </tr>

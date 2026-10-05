@@ -417,7 +417,7 @@ export function AssignmentForm({ assignment, licences, fixedAssetId, onSaved, on
           </Field>
         )}
         {selected && (
-          <div className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800 sm:col-span-2">
+          <div className="rounded-md bg-info-50 px-3 py-2 text-sm text-info-800 sm:col-span-2">
             {selected.assigned_quantity} / {selected.total_quantity ?? 0} affectées — <b>{selected.available_quantity ?? 0} disponible(s)</b>
           </div>
         )}

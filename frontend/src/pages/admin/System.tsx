@@ -49,7 +49,7 @@ export default function System() {
         <Card>
           <CardHeader title={<span className="inline-flex items-center gap-2"><Server className="h-4 w-4" /> Application</span>} />
           <dl className="divide-y divide-slate-100 px-5 py-2">
-            <Row label="Version"><Badge className="bg-brand-100 text-brand-800 ring-brand-600/20">v{s.version}</Badge></Row>
+            <Row label="Version"><Badge className="bg-info-100 text-info-800 ring-info-600/20">v{s.version}</Badge></Row>
             <Row label="Environnement">{s.environment}</Row>
             <Row label="Python">{s.python}</Row>
             <Row label="Fuseau horaire">{s.timezone}</Row>

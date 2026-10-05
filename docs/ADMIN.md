@@ -68,11 +68,15 @@ L'historique des imports (date, utilisateur, fichier, taille, lignes analysées 
 
 L'application ne produit pas de sauvegarde elle-même. Le script `scripts/backup.sh` crée un dump compressé dans `./backups` (rétention `BACKUP_KEEP_DAYS`, 14 jours par défaut) ; ce dossier est monté en lecture seule dans le backend, qui en affiche le dernier fichier et alerte au-delà de 48 h. Planification suggérée (cron) : `0 2 * * * cd /chemin/suivi-Licences && ./scripts/backup.sh >> backups/backup.log 2>&1`. Restauration : `gunzip -c backups/<fichier>.sql.gz | docker compose exec -T postgres psql -U suivi suivi_licences`. Ce n'est pas un plan de reprise d'activité complet (copie hors site et test de restauration à prévoir).
 
-## Charte graphique et logo
+## Charte graphique SBEE
 
-- Couleurs et typographie : `frontend/src/theme/tokens.css` (palette **provisoire**, à valider avec la charte officielle de la SBEE). Composants de base : `theme/components.css` ; primitives React : `components/ui/`.
-- **Logo** : le fichier `frontend/public/branding/logo.svg` est un emplacement réservé, **pas le logo officiel**. Pour installer le logo officiel, déposer le fichier dans `frontend/public/branding/` puis le nommer `logo.svg` ou définir `VITE_LOGO_URL` (et `VITE_LOGO_DARK_URL`) au build ; aucun composant à modifier. Voir `frontend/public/branding/README.md`.
-- Le nom de l'organisation et de l'application viennent des Paramètres généraux.
+L'interface applique la **charte graphique officielle SBEE (Juillet 2023)**.
+
+- **Couleurs** : toutes définies dans `frontend/src/theme/tokens.css` (aucune valeur codée en dur dans les composants). Couleurs officielles : rouge `#ED1F24` (dominante : barre latérale, boutons, états actifs, fond de connexion), blanc `#FFFFFF` ; association : jaune `#F9A825` (avertissement, repère d'état actif), vert `#00CC66` (succès), bleu `#3B5998` (information) ; neutres : gris clair `#C0C0C0`, gris foncé `#555555` (texte), noir `#000000`. Les nuances intermédiaires (survol, fonds légers, textes lisibles sur fond blanc) en sont déduites ; seul le niveau « critique » des échéances utilise une teinte orange intermédiaire (rouge → jaune), absente de la charte, pour distinguer quatre niveaux de statut.
+- **Typographie** : Poppins (police de marque), auto-hébergée via `@fontsource/poppins` (4 graisses latines, ≈ 32 Ko, aucun service externe) ; Century Gothic en repli.
+- **Logo** : logotype officiel extrait de la charte (`frontend/src/assets/brand/`, voir son README), version blanche sur la barre latérale rouge, version couleur sur la carte de connexion. Symbole utilisé uniquement en trame décorative à 7 % d'opacité (connexion, dashboard, états vides).
+- **Contrastes** (WCAG) : texte courant ≥ 5,1:1, badges ≥ 5,7:1, liens rouges 7,4:1. Seul le blanc sur le rouge officiel (barre latérale, boutons) fait 4,35:1 : inhérent à la couleur imposée par la charte, au-dessus du seuil de 3:1 des composants d'interface et du texte en gras, légèrement sous 4,5:1 pour le texte normal.
+- **Affichage** : conçu pour poste de travail. Aucun débordement de page de 1024 à 1440 px ; à 1440 px aucun tableau ne défile, entre 1024 et 1280 px les tableaux les plus larges (licences, contrats) défilent horizontalement dans leur carte. Pas de mise en page mobile.
 
 ## Mise à jour depuis la V1.0
 

@@ -98,7 +98,7 @@ export default function AssetDetail() {
         <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[
             ["Quantité totale", fmtNum(a.total_quantity), "text-slate-900"],
-            ["Quantité affectée", fmtNum(a.assigned_quantity), "text-brand-700"],
+            ["Quantité affectée", fmtNum(a.assigned_quantity), "text-info-700"],
             ["Quantité disponible", fmtNum(a.available_quantity), (a.available_quantity ?? 0) === 0 ? "text-danger-700" : "text-success-700"],
           ].map(([l, v, c]) => (
             <div key={l} className="card p-4"><div className="text-xs text-slate-500">{l}</div><div className={`mt-1 text-2xl font-semibold tabular-nums ${c}`}>{v}</div></div>
@@ -178,7 +178,7 @@ export default function AssetDetail() {
       <Modal open={assign !== undefined} title={assign ? "Modifier l'affectation" : `Affecter ${a.name}`} onClose={() => setAssign(undefined)}>
         {assign !== undefined && (
           <>
-            <div className="mb-4 rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
+            <div className="mb-4 rounded-md bg-info-50 px-3 py-2 text-sm text-info-800">
               {a.assigned_quantity} / {a.total_quantity ?? 0} affectées — <b>{a.available_quantity ?? 0} disponible(s)</b>
             </div>
             <AssignmentForm assignment={assign} fixedAssetId={a.id} onCancel={() => setAssign(undefined)} onSaved={() => { setAssign(undefined); reload(); }} />

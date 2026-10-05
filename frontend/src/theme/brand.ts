@@ -1,20 +1,33 @@
 /**
- * Identité visuelle : emplacement du logo et textes par défaut.
+ * Identité visuelle SBEE : ressources officielles, textes et règles d'usage.
  *
- * Pour installer le logo officiel SBEE sans toucher aux composants :
- *   1. déposer le fichier dans `frontend/public/branding/` (logo.svg ou logo.png),
- *   2. soit le nommer `logo.svg` (remplace le fichier fourni), soit définir VITE_LOGO_URL
- *      (ex. VITE_LOGO_URL=/branding/logo-sbee.png) au build du frontend,
- *   3. reconstruire le frontend (`docker compose up --build`).
- * Si l'image est introuvable, un monogramme de repli s'affiche automatiquement.
+ * Les fichiers du logo et du symbole sont lus dans `src/assets/brand/` à la compilation
+ * (voir le README de ce dossier). Aucun logo n'est jamais reconstitué : s'il manque, seul le
+ * nom de l'organisation est affiché.
  */
+const files = import.meta.glob("../assets/brand/*.{svg,png,webp}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+
+function find(name: string): string | undefined {
+  const key = Object.keys(files).find((k) => k.split("/").pop()!.replace(/\.[^.]+$/, "") === name);
+  return key ? files[key] : undefined;
+}
+
+export const brandAssets = {
+  /** Logotype original couleur (fond blanc / clair). */
+  logo: find("logo"),
+  /** Logotype pour fond rouge / sombre. */
+  logoLight: find("logo-light"),
+  /** Symbole seul (rouge), pour la trame décorative sur fond blanc / clair. */
+  symbol: find("symbol"),
+  /** Symbole seul (blanc), pour la trame décorative sur fond rouge. */
+  symbolLight: find("symbol-light"),
+};
+
 export const brand = {
-  logoUrl: (import.meta.env.VITE_LOGO_URL as string | undefined) || "/branding/logo.svg",
-  /** Variante pour fond sombre (sidebar). Par défaut, le même fichier. */
-  logoDarkUrl: (import.meta.env.VITE_LOGO_DARK_URL as string | undefined) || (import.meta.env.VITE_LOGO_URL as string | undefined) || "/branding/logo.svg",
-  fallbackInitials: "SBEE",
   /** Noms affichés tant que la configuration n'est pas chargée ; ensuite, ceux des Paramètres généraux. */
   defaultOrganization: "SBEE",
   defaultApplication: "Gestion du Patrimoine SI",
   organizationFullName: "Société Béninoise d'Énergie Électrique",
+  /** Hauteur minimale (px) du logotype à l'écran, pour rester lisible. */
+  logoMinHeight: 40,
 };

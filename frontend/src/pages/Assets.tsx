@@ -167,7 +167,7 @@ export default function Assets() {
               {data?.items.map((a) => (
                 <tr key={a.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/actifs/fiche/${a.id}`)}>
                   <td className="td font-mono text-xs text-slate-600">{a.reference}</td>
-                  <td className="td max-w-xs truncate font-medium text-slate-900" title={a.name}>{a.name}</td>
+                  <td className="td min-w-[9rem] max-w-[15rem] font-medium text-slate-900" title={a.name}>{a.name}</td>
                   {!category && <td className="td">{CATEGORY_LABELS[a.category]}</td>}
                   <td className="td">{a.vendor_name ?? "—"}</td>
                   <td className="td">{a.internal_owner ?? "—"}</td>

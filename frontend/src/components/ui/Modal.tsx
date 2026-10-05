@@ -10,7 +10,7 @@ export function Modal({ open, title, onClose, children, wide }: { open: boolean;
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-brand-950/50 p-4 pt-12" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4 pt-12" role="dialog" aria-modal="true" aria-label={title}>
       <div className={`card w-full ${wide ? "max-w-4xl" : "max-w-xl"} shadow-xl`}>
         <div className="card-header">
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
@@ -52,7 +52,7 @@ export function ConfirmDialog({
   }, [open, onCancel]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-brand-950/50 p-4" role="alertdialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4" role="alertdialog" aria-modal="true" aria-label={title}>
       <div className="card w-full max-w-md p-6 shadow-xl">
         <div className="flex gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${danger ? "bg-danger-100 text-danger-600" : "bg-warning-100 text-warning-600"}`}>
