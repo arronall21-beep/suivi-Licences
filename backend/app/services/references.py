@@ -55,8 +55,9 @@ async def sync_sequence(db: AsyncSession, kind: str) -> None:
     if where is not None:
         stmt = stmt.where(where)
     highest = (await db.execute(stmt)).scalar_one()
-    if highest:
-        # GREATEST : ne jamais faire reculer la séquence
-        await db.execute(
-            select(func.setval(seq.name, func.greatest(highest, text(f"(SELECT last_value FROM {seq.name})")), True))
-        )
+    if not highest:
+        return
+    last_value, is_called = (await db.execute(text(f"SELECT last_value, is_called FROM {seq.name}"))).one()
+    consumed = last_value if is_called else last_value - 1  # dernier numéro déjà attribué
+    if highest > consumed:  # ne jamais faire reculer la séquence, ni « consommer » un numéro libre
+        await db.execute(select(func.setval(seq.name, highest, True)))

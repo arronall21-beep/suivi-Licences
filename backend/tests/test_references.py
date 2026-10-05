@@ -98,3 +98,20 @@ async def test_reimport_of_rows_without_reference_is_idempotent(admin):
     second = await upload(admin, content)
     assert first["created"] == 1 and second["created"] == 0 and second["updated"] == 1
     assert (await admin.get("/api/v1/assets")).json()["total"] == 1
+
+
+async def test_sync_never_wastes_a_free_number(admin, db):
+    """Après une migration, la séquence « prochaine valeur = 6 » ne doit pas devenir « 6 consommée » à l'import."""
+    from sqlalchemy import text
+
+    for ref in ("CERT-001", "CERT-002", "CERT-003", "CERT-004", "CERT-005"):
+        await admin.post("/api/v1/assets", json={"category": "CERTIFICAT", "name": ref, "reference": ref})
+    await db.execute(text("ALTER SEQUENCE ref_cert_seq RESTART WITH 6"))  # état laissé par la migration 0002
+    await db.commit()
+    content = workbook([["LIC-001", "Office", 5]])
+    await upload(admin, content)  # déclenche la synchronisation des séquences
+    assert (await create(admin, "CERTIFICAT"))["reference"] == "CERT-006"
+    # une référence explicite plus haute fait bien avancer la séquence
+    await admin.post("/api/v1/assets", json={"category": "CERTIFICAT", "name": "x", "reference": "CERT-020"})
+    await upload(admin, workbook([["LIC-001", "Office", 5]]))
+    assert (await create(admin, "CERTIFICAT"))["reference"] == "CERT-021"
