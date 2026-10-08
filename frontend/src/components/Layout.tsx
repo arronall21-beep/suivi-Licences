@@ -115,7 +115,7 @@ export default function Layout() {
           <Item to="/actifs" end icon={Server}>
             Actifs
           </Item>
-          <div className="mt-1 space-y-0.5">
+          <div className="nav-sub-group">
             <NavLink to="/actifs/licences" className={sub}>
               <KeyRound className="h-3.5 w-3.5" /> Licences
             </NavLink>

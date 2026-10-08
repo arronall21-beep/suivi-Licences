@@ -97,16 +97,28 @@ export default function Login() {
     }
   };
 
+  const orgName = cfg?.org_name ?? brand.defaultOrganization;
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-brand-500 via-brand-500 to-brand-700 p-4">
-      {/* Trame décorative (symbole du logo, 7 % d'opacité) : rendue uniquement si le symbole officiel est fourni */}
-      <Watermark tone="light" className="-bottom-28 -right-28 h-[36rem] w-[36rem]" />
-      <div className="relative w-full max-w-sm">
-        <form onSubmit={submit} className="overflow-hidden rounded-2xl bg-white shadow-2xl">
-          <div className="h-1.5 bg-accent-500" aria-hidden="true" />
-          <div className="p-8">
-          <div className="mb-7 flex flex-col items-center text-center">
-            {hasOfficialLogo ? <BrandLogo height={72} className="mb-5" /> : <p className="mb-2 text-sm font-medium text-slate-600">{brand.organizationFullName}</p>}
+    <div className="flex min-h-screen bg-white">
+      {/* Bandeau institutionnel rouge (logotype blanc officiel pour fond rouge) */}
+      <aside className="relative hidden w-[40%] max-w-xl flex-col justify-between overflow-hidden bg-brand-500 p-12 text-white lg:flex">
+        <Watermark tone="light" className="-bottom-24 -right-24 h-[30rem] w-[30rem]" />
+        <div className="relative">
+          {hasOfficialLogo ? <BrandLogo variant="light" height={72} /> : <p className="text-lg font-semibold">{orgName}</p>}
+        </div>
+        <div className="relative">
+          <p className="text-2xl font-semibold leading-snug">{brand.organizationFullName}</p>
+          <p className="mt-3 text-sm text-white/80">{cfg?.app_name ?? brand.defaultApplication}</p>
+        </div>
+        <p className="relative text-xs text-white/70">
+          {orgName}
+          {cfg?.version && ` · v${cfg.version}`}
+        </p>
+      </aside>
+      <main className="flex flex-1 items-center justify-center bg-white p-6">
+        <form onSubmit={submit} className="w-full max-w-sm">
+          <div className="mb-8 flex flex-col items-center text-center">
+            {hasOfficialLogo ? <BrandLogo height={64} className="mb-5" /> : <p className="mb-2 text-sm font-medium text-slate-600">{brand.organizationFullName}</p>}
             <h1 className="text-xl font-semibold text-slate-900">{cfg?.app_name ?? brand.defaultApplication}</h1>
           </div>
           <Field label="Email" required className="mb-3">
@@ -122,13 +134,8 @@ export default function Login() {
           <button type="button" className="mt-4 block w-full text-center text-sm font-medium text-brand-700 hover:underline" onClick={() => setForgot(true)}>
             Mot de passe oublié ?
           </button>
-          </div>
         </form>
-        <p className="mt-4 text-center text-xs text-white/90">
-          {cfg?.org_name ?? brand.defaultOrganization}
-          {cfg?.version && ` · v${cfg.version}`}
-        </p>
-      </div>
+      </main>
       <ForgotPassword open={forgot} onClose={() => setForgot(false)} />
     </div>
   );
