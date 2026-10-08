@@ -76,19 +76,19 @@
 
   /* Navigation latérale (fond rouge SBEE, texte blanc) */
   .nav-section {
-    @apply mx-1 mb-2 mt-6 border-t border-white/25 px-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/65;
+    @apply mx-1 mb-1 mt-2.5 border-t border-white/25 px-2 pt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white;
   }
   .nav-link {
-    @apply flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-white transition hover:bg-black/15;
+    @apply flex items-center gap-3 rounded-md px-3 py-[5px] text-sm font-medium text-white transition hover:bg-black/15;
   }
   .nav-link-active {
     @apply bg-black/20 font-semibold shadow-[inset_3px_0_0_rgb(var(--accent-500))];
   }
   .nav-sub {
-    @apply flex items-center gap-2.5 rounded-md py-1.5 pl-3 pr-3 text-[13px] text-white/85 transition hover:bg-black/15 hover:text-white;
+    @apply flex items-center gap-2.5 rounded-md py-1 pl-3 pr-3 text-[13px] text-white/85 transition hover:bg-black/15 hover:text-white;
   }
   .nav-sub-group {
-    @apply ml-5 mt-1 space-y-1 border-l border-white/30 pl-2;
+    @apply ml-5 mt-0.5 space-y-0.5 border-l border-white/30 pl-2;
   }
   .nav-sub.nav-link-active {
     @apply bg-black/30 font-semibold text-white;
