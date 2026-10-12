@@ -1,0 +1,41 @@
+# Surcharge PRODUCTION — à utiliser avec docker-compose.yml (voir docs/DEPLOY.md).
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml ...
+# En pratique : COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml dans .env, puis `docker compose ...` suffit.
+#
+# Différences avec le développement :
+#  - aucun mot de passe par défaut (POSTGRES_PASSWORD obligatoire) ;
+#  - image backend sans les dépendances de test ;
+#  - le backend n'est PAS publié sur le réseau (seul nginx/frontend l'atteint via le réseau Docker) ;
+#  - PostgreSQL n'est jamais publié ; Adminer est exclu (profil « debug », écoute 127.0.0.1 uniquement) ;
+#  - rotation des journaux Docker.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}
+    logging: *logging
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        INSTALL_DEV: "false"
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-suivi}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}@postgres:5432/${POSTGRES_DB:-suivi_licences}
+    ports: !reset []
+    logging: *logging
+
+  frontend:
+    ports: !override
+      - "${FRONTEND_BIND:-0.0.0.0}:${FRONTEND_PORT:-80}:80"
+    logging: *logging
+
+  adminer:
+    # Démarré uniquement avec : docker compose --profile debug up -d adminer (tunnel SSH requis)
+    profiles: ["debug"]
