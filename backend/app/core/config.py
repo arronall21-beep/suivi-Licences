@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Environnements où la documentation interactive de l'API peut être servie (tout autre nom, dont « production », la désactive)
@@ -24,6 +25,11 @@ class Settings(BaseSettings):
     manager_password: str = "manager123"
     viewer_email: str = "viewer@example.com"
     viewer_password: str = "viewer123"
+
+    # Nombre de reverse proxies de confiance placés devant l'application (nginx = 1). 0 : aucun en-tête de transfert
+    # n'est cru et l'adresse du client est celle de la connexion. Ne jamais dépasser le nombre réel de proxies : un client
+    # peut écrire n'importe quoi dans X-Forwarded-For, seules les entrées ajoutées par ses propres proxies sont fiables.
+    trusted_proxy_count: int = Field(default=0, ge=0, le=10)
 
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
 

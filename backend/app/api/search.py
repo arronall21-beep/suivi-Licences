@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import or_, select
 
 from app.api.deps import DB, ReaderUser
-from app.core.permissions import has_permission
+from app.core.permissions import has_system_permission
 from app.models import Asset, Contract, User, Vendor
 
 router = APIRouter(tags=["search"])
@@ -71,7 +71,7 @@ async def global_search(db: DB, user: ReaderUser, q: str = Query(..., min_length
         .all()
     )
     users: list[User] = []
-    if has_permission(user.role, "admin:users"):  # liste des comptes : réservée à la gestion des utilisateurs
+    if has_system_permission(user.role, "admin:users"):  # mêmes conditions que GET /users (permission et rôle ADMIN)
         users = (
             (
                 await db.execute(
