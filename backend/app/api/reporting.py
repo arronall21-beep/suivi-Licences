@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy import select
 
-from app.api.deps import DB, AdminUser, CurrentUser, ImporterUser
+from app.api.deps import DB, AlertsRunner, ExporterUser, ImporterUser, ReaderUser
 from app.core.config import settings
 from app.models import ImportLog, Notification
 from app.schemas import NotificationOut
@@ -21,14 +21,14 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 @router.get("/dashboard", tags=["dashboard"])
-async def dashboard(db: DB, _: CurrentUser):
+async def dashboard(db: DB, _: ReaderUser):
     return await build_dashboard(db)
 
 
 @router.get("/renewals", tags=["renewals"])
 async def renewals(
     db: DB,
-    _: CurrentUser,
+    _: ReaderUser,
     horizon_days: int | None = Query(365, ge=1, le=3650),
     type: str | None = None,
     status: str | None = None,
@@ -103,7 +103,7 @@ async def import_excel(file: UploadFile, db: DB, user: ImporterUser, audit: Audi
 
 
 @router.get("/import/history", tags=["import-export"])
-async def import_history(db: DB, _: CurrentUser, limit: int = Query(20, ge=1, le=100)):
+async def import_history(db: DB, _: ReaderUser, limit: int = Query(20, ge=1, le=100)):
     logs = (await db.execute(select(ImportLog).order_by(ImportLog.id.desc()).limit(limit))).scalars().all()
     return [
         {
@@ -124,7 +124,7 @@ async def import_history(db: DB, _: CurrentUser, limit: int = Query(20, ge=1, le
 
 
 @router.get("/import/history/{log_id}", tags=["import-export"])
-async def import_report(log_id: int, db: DB, _: CurrentUser):
+async def import_report(log_id: int, db: DB, _: ReaderUser):
     lg = await db.get(ImportLog, log_id)
     if lg is None:
         raise HTTPException(404, "Import introuvable")
@@ -148,40 +148,40 @@ async def _export(db, user, audit, scope: str, horizon_days: int | None = None) 
 
 
 @router.get("/export/excel", tags=["import-export"])
-async def export_excel(db: DB, user: CurrentUser, audit: Audit):
+async def export_excel(db: DB, user: ExporterUser, audit: Audit):
     """Inventaire complet : les 7 onglets du gabarit métier."""
     return await _export(db, user, audit, "all")
 
 
 @router.get("/export/licences", tags=["import-export"])
-async def export_licences(db: DB, user: CurrentUser, audit: Audit):
+async def export_licences(db: DB, user: ExporterUser, audit: Audit):
     return await _export(db, user, audit, "licences")
 
 
 @router.get("/export/contrats", tags=["import-export"])
-async def export_contrats(db: DB, user: CurrentUser, audit: Audit):
+async def export_contrats(db: DB, user: ExporterUser, audit: Audit):
     return await _export(db, user, audit, "contrats")
 
 
 @router.get("/export/echeances", tags=["import-export"])
-async def export_echeances(db: DB, user: CurrentUser, audit: Audit):
+async def export_echeances(db: DB, user: ExporterUser, audit: Audit):
     """Éléments expirés, critiques ou en alerte (actifs et contrats)."""
     return await _export(db, user, audit, "echeances")
 
 
 @router.get("/export/planning", tags=["import-export"])
-async def export_planning(db: DB, user: CurrentUser, audit: Audit, horizon_days: int | None = Query(None, ge=1, le=3650)):
+async def export_planning(db: DB, user: ExporterUser, audit: Audit, horizon_days: int | None = Query(None, ge=1, le=3650)):
     """Planning de renouvellement (tous les éléments datés, ou limité à un horizon en jours)."""
     return await _export(db, user, audit, "planning", horizon_days)
 
 
 @router.get("/notifications", response_model=list[NotificationOut], tags=["alerts"])
-async def notifications(db: DB, _: CurrentUser, limit: int = Query(200, ge=1, le=1000)):
+async def notifications(db: DB, _: ReaderUser, limit: int = Query(200, ge=1, le=1000)):
     return (await db.execute(select(Notification).order_by(Notification.id.desc()).limit(limit))).scalars().all()
 
 
 @router.get("/alerts", tags=["alerts"])
-async def alerts(db: DB, _: CurrentUser):
+async def alerts(db: DB, _: ReaderUser):
     cfg = await app_settings.get_alerts(db)
     smtp_cfg, _, _ = await app_settings.get_smtp_config(db)
     general = await app_settings.get_general(db)
@@ -199,7 +199,7 @@ async def alerts(db: DB, _: CurrentUser):
 
 
 @router.post("/alerts/run", tags=["alerts"])
-async def alerts_run(db: DB, user: AdminUser, audit: Audit):
+async def alerts_run(db: DB, user: AlertsRunner, audit: Audit):
     result = await run_alerts(db)
     await audit.log(
         user,

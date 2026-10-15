@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, AdminUser, get_or_404
+from app.api.deps import DB, UsersAdmin, get_or_404
 from app.core.permissions import PERMISSION_LABELS, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLE_PERMISSIONS
 from app.core.security import hash_password
 from app.models import ROLES, User
@@ -24,7 +24,7 @@ async def _other_active_admins(db, user_id: int) -> int:
 @router.get("/users")
 async def list_users(
     db: DB,
-    _: AdminUser,
+    _: UsersAdmin,
     q: str | None = None,
     role: str | None = None,
     state: str | None = Query(None, pattern="^(active|inactive)$"),
@@ -54,7 +54,7 @@ async def list_users(
 
 
 @router.post("/users", response_model=UserOut, status_code=201)
-async def create_user(body: UserCreate, db: DB, admin: AdminUser, audit: Audit):
+async def create_user(body: UserCreate, db: DB, admin: UsersAdmin, audit: Audit):
     user = User(
         email=str(body.email).lower(),
         first_name=body.first_name,
@@ -78,7 +78,7 @@ async def create_user(body: UserCreate, db: DB, admin: AdminUser, audit: Audit):
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
-async def update_user(user_id: int, body: UserUpdate, db: DB, admin: AdminUser, audit: Audit):
+async def update_user(user_id: int, body: UserUpdate, db: DB, admin: UsersAdmin, audit: Audit):
     user = await get_or_404(db, User, user_id)
     if user.role == "ADMIN" and body.role != "ADMIN" and user.is_active and await _other_active_admins(db, user.id) == 0:
         raise HTTPException(status.HTTP_409_CONFLICT, "Impossible de retirer le rôle ADMIN du dernier administrateur actif")
@@ -104,7 +104,7 @@ async def update_user(user_id: int, body: UserUpdate, db: DB, admin: AdminUser, 
 
 
 @router.post("/users/{user_id}/deactivate", response_model=UserOut)
-async def deactivate_user(user_id: int, db: DB, admin: AdminUser, audit: Audit):
+async def deactivate_user(user_id: int, db: DB, admin: UsersAdmin, audit: Audit):
     user = await get_or_404(db, User, user_id)
     if user.id == admin.id:
         raise HTTPException(status.HTTP_409_CONFLICT, "Vous ne pouvez pas désactiver votre propre compte")
@@ -119,7 +119,7 @@ async def deactivate_user(user_id: int, db: DB, admin: AdminUser, audit: Audit):
 
 
 @router.post("/users/{user_id}/reactivate", response_model=UserOut)
-async def reactivate_user(user_id: int, db: DB, admin: AdminUser, audit: Audit):
+async def reactivate_user(user_id: int, db: DB, admin: UsersAdmin, audit: Audit):
     user = await get_or_404(db, User, user_id)
     user.is_active = True
     await db.commit()
@@ -129,7 +129,7 @@ async def reactivate_user(user_id: int, db: DB, admin: AdminUser, audit: Audit):
 
 
 @router.post("/users/{user_id}/reset-password", response_model=UserOut)
-async def reset_password(user_id: int, body: PasswordReset, db: DB, admin: AdminUser, audit: Audit):
+async def reset_password(user_id: int, body: PasswordReset, db: DB, admin: UsersAdmin, audit: Audit):
     user = await get_or_404(db, User, user_id)
     user.hashed_password = hash_password(body.password)
     user.token_version += 1  # toutes les sessions de l'utilisateur sont invalidées
@@ -140,7 +140,7 @@ async def reset_password(user_id: int, body: PasswordReset, db: DB, admin: Admin
 
 
 @router.get("/roles")
-async def list_roles(db: DB, _: AdminUser):
+async def list_roles(db: DB, _: UsersAdmin):
     counts = dict((await db.execute(select(User.role, func.count()).where(User.is_active.is_(True)).group_by(User.role))).all())
     roles = [
         {

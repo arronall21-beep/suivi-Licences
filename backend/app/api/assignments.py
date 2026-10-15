@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import or_, select
 
-from app.api.deps import DB, CurrentUser, WriterUser, get_or_404
+from app.api.deps import DB, ReaderUser, WriterUser, get_or_404
 from app.models import Asset, LicenseAssignment
 from app.schemas import AssignmentIn, AssignmentOut
 from app.services.audit import Audit
@@ -15,7 +15,7 @@ def _target(a: LicenseAssignment) -> dict:
 
 
 @router.get("", response_model=list[AssignmentOut])
-async def list_assignments(db: DB, _: CurrentUser, asset_id: int | None = None, q: str | None = None):
+async def list_assignments(db: DB, _: ReaderUser, asset_id: int | None = None, q: str | None = None):
     stmt = select(LicenseAssignment).join(Asset, LicenseAssignment.asset_id == Asset.id).order_by(LicenseAssignment.id.desc())
     if asset_id:
         stmt = stmt.where(LicenseAssignment.asset_id == asset_id)

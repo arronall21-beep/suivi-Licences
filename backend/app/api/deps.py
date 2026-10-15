@@ -32,30 +32,56 @@ async def get_current_user(db: DB, token: Annotated[str | None, Depends(oauth2)]
     return user
 
 
-def require_permission(permission: str):
+def require_permission(permission: str, *, system: bool = False):
+    """Dépendance d'autorisation : la permission du rôle est vérifiée côté serveur à chaque requête.
+
+    `system=True` (administration système : comptes, rôles, SMTP, état du système) exige en plus le rôle ADMIN :
+    une permission ajoutée à un autre rôle par erreur ne suffit alors pas à ouvrir ces routes.
+    La politique est exposée dans `__policy__` pour que les tests puissent vérifier chaque route.
+    """
+
     async def checker(user: Annotated[User, Depends(get_current_user)]) -> User:
+        if system and user.role != "ADMIN":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Droits administrateur requis")
         if not has_permission(user.role, permission):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Droits insuffisants pour cette action")
         return user
 
+    checker.__policy__ = {"permission": permission, "system": system}
     return checker
 
 
-async def require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if user.role != "ADMIN":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Droits administrateur requis")
-    return user
+CurrentUser = Annotated[User, Depends(get_current_user)]  # connecté (identité, configuration d'affichage)
 
-
-CurrentUser = Annotated[User, Depends(get_current_user)]
-# Administrateur uniquement (utilisateurs, paramètres, SMTP, audit, système, alertes)
-AdminUser = Annotated[User, Depends(require_admin)]
+# --- Données métier -------------------------------------------------------------------------------------------
+# Lecture (actifs, contrats, fournisseurs, affectations, dashboard, planning, recherche, alertes) : data:read
+ReaderUser = Annotated[User, Depends(require_permission("data:read"))]
+# Exports Excel : export:run
+ExporterUser = Annotated[User, Depends(require_permission("export:run"))]
+# Notifications internes personnelles (cloche) : notifications:read
+InboxUser = Annotated[User, Depends(require_permission("notifications:read"))]
 # Écriture des données métier (actifs, contrats, fournisseurs, affectations) : ADMIN et MANAGER
 WriterUser = Annotated[User, Depends(require_permission("data:write"))]
 # Suppression d'actifs, contrats, fournisseurs : ADMIN
 DeleterUser = Annotated[User, Depends(require_permission("data:delete"))]
 # Import Excel : ADMIN
 ImporterUser = Annotated[User, Depends(require_permission("import:run"))]
+
+# --- Gouvernance et pilotage (permission seule : pourront être confiées à un rôle métier sans rôle ADMIN) ---------
+# Paramètres généraux et seuils d'alerte
+SettingsAdmin = Annotated[User, Depends(require_permission("admin:settings"))]
+# Journal d'audit (lecture)
+AuditReader = Annotated[User, Depends(require_permission("admin:audit"))]
+# Déclenchement manuel du contrôle des alertes
+AlertsRunner = Annotated[User, Depends(require_permission("alerts:run"))]
+
+# --- Administration système : permission ET rôle ADMIN ------------------------------------------------------------
+# Utilisateurs, rôles, réinitialisation de mots de passe
+UsersAdmin = Annotated[User, Depends(require_permission("admin:users", system=True))]
+# SMTP et secrets associés
+SmtpAdmin = Annotated[User, Depends(require_permission("admin:smtp", system=True))]
+# État du système (base, planificateur, sauvegardes)
+SystemAdmin = Annotated[User, Depends(require_permission("admin:system", system=True))]
 
 
 async def get_or_404(db: AsyncSession, model, obj_id: int):

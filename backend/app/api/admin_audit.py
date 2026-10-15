@@ -3,7 +3,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from fastapi import APIRouter, Query
 from sqlalchemy import and_, func, or_, select
 
-from app.api.deps import DB, AdminUser
+from app.api.deps import DB, AuditReader
 from app.models import AuditLog
 from app.services.audit import ACTION_LABELS
 
@@ -29,7 +29,7 @@ def _out(a: AuditLog) -> dict:
 @router.get("")
 async def list_audit(
     db: DB,
-    _: AdminUser,
+    _: AuditReader,
     q: str | None = None,
     action: str | None = None,
     user: str | None = None,
@@ -75,5 +75,5 @@ async def list_audit(
 
 
 @router.get("/actions")
-async def audit_actions(db: DB, _: AdminUser):
+async def audit_actions(db: DB, _: AuditReader):
     return [{"value": k, "label": v} for k, v in ACTION_LABELS.items()]

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
+from app.api.deps import DB, DeleterUser, ReaderUser, WriterUser, get_or_404
 from app.core import lifecycle
 from app.models import Asset, Contract, Vendor
 from app.schemas import AssetDetailOut, AssetIn, AssetPage
@@ -43,7 +43,7 @@ def _status_condition(status: str):
 @router.get("", response_model=AssetPage)
 async def list_assets(
     db: DB,
-    _: CurrentUser,
+    _: ReaderUser,
     q: str | None = None,
     reference: str | None = None,
     name: str | None = None,
@@ -98,7 +98,7 @@ async def list_assets(
 
 
 @router.get("/options")
-async def filter_options(db: DB, _: CurrentUser):
+async def filter_options(db: DB, _: ReaderUser):
     async def distinct(column):
         rows = await db.execute(select(column).where(column.isnot(None)).distinct().order_by(column))
         return [r[0] for r in rows if r[0]]
@@ -113,7 +113,7 @@ async def filter_options(db: DB, _: CurrentUser):
 
 
 @router.get("/{asset_id}", response_model=AssetDetailOut)
-async def get_asset(asset_id: int, db: DB, _: CurrentUser):
+async def get_asset(asset_id: int, db: DB, _: ReaderUser):
     return await get_or_404(db, Asset, asset_id)
 
 

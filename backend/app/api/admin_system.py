@@ -4,7 +4,7 @@ import time
 from fastapi import APIRouter
 from sqlalchemy import func, select, text
 
-from app.api.deps import DB, AdminUser
+from app.api.deps import DB, SystemAdmin
 from app.core.config import settings
 from app.jobs import scheduler as sched
 from app.models import ImportLog, User
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/system")
-async def system_info(db: DB, _: AdminUser):
+async def system_info(db: DB, _: SystemAdmin):
     started = time.perf_counter()
     db_version = (await db.execute(text("SHOW server_version"))).scalar_one()
     latency_ms = round((time.perf_counter() - started) * 1000, 1)

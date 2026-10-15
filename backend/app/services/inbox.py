@@ -2,12 +2,18 @@
 
 from datetime import date
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import has_permission
 from app.models import AppNotification, AppNotificationRead, User
 
 PRIORITY_RANK = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+
+# Notifications de sécurité des comptes : réservées aux titulaires de `notifications:security`, quelle que soit la
+# valeur de `audience` (les lignes déjà enregistrées portent `audience="ADMIN"`, sans migration de données).
+SECURITY_KINDS = frozenset({"PASSWORD_RESET_REQUEST"})
+AUDIENCE_SECURITY = "SECURITY"
 
 
 async def create_notification(
@@ -44,8 +50,24 @@ async def create_notification(
 
 
 def audience_filter(user: User):
-    """Un ADMIN voit toutes les notifications ; les autres rôles, uniquement celles destinées à tous."""
-    return True if user.role == "ADMIN" else AppNotification.audience == "ALL"
+    """Condition SQL des notifications visibles par `user` (liste, compteur, « tout lire », « lire »).
+
+    - audience ALL : tous les rôles, sauf les notifications de sécurité ;
+    - audience ADMIN (imports) : permission `notifications:admin` ;
+    - sécurité des comptes (`SECURITY_KINDS` ou audience SECURITY) : permission `notifications:security` uniquement.
+    Une permission d'administration métier ne donne donc jamais accès aux demandes de réinitialisation de mot de passe.
+    """
+    can_admin = has_permission(user.role, "notifications:admin")
+    can_security = has_permission(user.role, "notifications:security")
+    if can_admin and can_security:
+        return true()  # visibilité complète, identique à celle de ADMIN avant ce lot
+    not_security = AppNotification.kind.not_in(list(SECURITY_KINDS))
+    clauses = [and_(AppNotification.audience == "ALL", not_security)]
+    if can_admin:
+        clauses.append(and_(AppNotification.audience == "ADMIN", not_security))
+    if can_security:
+        clauses.append(or_(AppNotification.kind.in_(list(SECURITY_KINDS)), AppNotification.audience == AUDIENCE_SECURITY))
+    return or_(*clauses)
 
 
 async def unread_count(db: AsyncSession, user: User) -> int:
@@ -65,7 +87,7 @@ async def notify_password_reset_request(db: AsyncSession, user: User) -> None:
         link=f"/admin/utilisateurs?q={user.email}",
         entity_type="USER",
         entity_id=user.id,
-        audience="ADMIN",
+        audience=AUDIENCE_SECURITY,
         dedupe_key=f"pwdreset:{user.id}:{date.today().isoformat()}",
     )
     await db.commit()
