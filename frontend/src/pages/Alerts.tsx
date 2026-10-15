@@ -12,6 +12,7 @@ import type { NotificationItem, RenewalItem } from "../types";
 
 interface AlertsData {
   smtp_configured: boolean;
+  recipients_visible: boolean;
   recipients: string[];
   thresholds: number[];
   items: (RenewalItem & { threshold: number })[];
@@ -64,7 +65,13 @@ export default function AlertsPanel() {
           </Button>
         )}
       </div>
-      {a && (
+      {a && !a.recipients_visible && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <Mail className="h-4 w-4" />
+          Les destinataires des alertes sont réservés aux administrateurs.
+        </div>
+      )}
+      {a && a.recipients_visible && (
         <div className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${a.smtp_configured && a.recipients.length ? "border-success-200 bg-success-50 text-success-800" : "border-warning-200 bg-warning-50 text-warning-800"}`}>
           <Mail className="h-4 w-4" />
           {a.smtp_configured && a.recipients.length

@@ -4,8 +4,9 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DB, DeleterUser, ReaderUser, WriterUser, get_or_404
 from app.core import lifecycle
-from app.models import Asset, Contract, Vendor
-from app.schemas import AssetDetailOut, AssetIn, AssetPage
+from app.core.permissions import has_permission
+from app.models import Asset, Contract, User, Vendor
+from app.schemas import AssetDetailOut, AssetIn, AssetOut, AssetPage
 from app.services.audit import Audit, changed_fields
 from app.services.references import next_reference
 
@@ -28,6 +29,23 @@ SORTS = {
 }
 
 
+def _can_see_secrets(user: User) -> bool:
+    return has_permission(user.role, "secrets:read")
+
+
+def _present(asset: Asset, user: User, model=AssetOut):
+    """Sérialise un actif pour `user` : la clé de licence n'est renvoyée qu'avec `secrets:read`.
+
+    Le masquage est fait côté serveur, avant la réponse : aucune route d'actif ne doit renvoyer `license_key`
+    sans passer par cette fonction. `has_license_key` indique l'existence d'une clé sans révéler sa valeur.
+    """
+    out = model.model_validate(asset)
+    out.has_license_key = bool(out.license_key)
+    if not _can_see_secrets(user):
+        out.license_key = None
+    return out
+
+
 def _status_condition(status: str):
     if status == lifecycle.INCONNU:
         return EFFECTIVE_END.is_(None)
@@ -43,7 +61,7 @@ def _status_condition(status: str):
 @router.get("", response_model=AssetPage)
 async def list_assets(
     db: DB,
-    _: ReaderUser,
+    user: ReaderUser,
     q: str | None = None,
     reference: str | None = None,
     name: str | None = None,
@@ -94,7 +112,7 @@ async def list_assets(
     col = col.desc().nulls_last() if order == "desc" else col.asc().nulls_last()
     stmt = stmt.order_by(col, Asset.id).offset((page - 1) * size).limit(size)
     items = (await db.execute(stmt)).unique().scalars().all()
-    return {"items": items, "total": total, "page": page, "size": size}
+    return {"items": [_present(a, user) for a in items], "total": total, "page": page, "size": size}
 
 
 @router.get("/options")
@@ -113,8 +131,8 @@ async def filter_options(db: DB, _: ReaderUser):
 
 
 @router.get("/{asset_id}", response_model=AssetDetailOut)
-async def get_asset(asset_id: int, db: DB, _: ReaderUser):
-    return await get_or_404(db, Asset, asset_id)
+async def get_asset(asset_id: int, db: DB, user: ReaderUser):
+    return _present(await get_or_404(db, Asset, asset_id), user, AssetDetailOut)
 
 
 async def _validate(db, body: AssetIn, asset: Asset | None = None):
@@ -142,15 +160,18 @@ async def create_asset(body: AssetIn, db: DB, user: WriterUser, audit: Audit):
     except IntegrityError:
         raise HTTPException(409, "Référence déjà existante pour cette catégorie") from None
     await audit.log(user, "ASSET_CREATE", "ASSET", a.id, f"{a.reference} — {a.name}", details={"categorie": a.category})
-    return await get_or_404(db, Asset, a.id)
+    return _present(await get_or_404(db, Asset, a.id), user, AssetDetailOut)
 
 
 @router.put("/{asset_id}", response_model=AssetDetailOut)
 async def update_asset(asset_id: int, body: AssetIn, db: DB, user: WriterUser, audit: Audit):
     a = await get_or_404(db, Asset, asset_id)
     await _validate(db, body, a)
-    changed = changed_fields(a, body.model_dump(), skip=("reference",) if not body.reference else ())
-    for k, v in body.model_dump().items():
+    data = body.model_dump()
+    if not _can_see_secrets(user):
+        data["license_key"] = a.license_key  # clé masquée pour ce rôle : la modification d'un actif ne l'efface pas
+    changed = changed_fields(a, data, skip=("reference",) if not body.reference else ())
+    for k, v in data.items():
         if k == "reference" and not v:
             continue  # la référence existante est conservée
         setattr(a, k, v)
@@ -160,7 +181,7 @@ async def update_asset(asset_id: int, body: AssetIn, db: DB, user: WriterUser, a
         raise HTTPException(409, "Référence déjà existante pour cette catégorie") from None
     await audit.log(user, "ASSET_UPDATE", "ASSET", asset_id, f"{a.reference} — {a.name}", details={"champs": changed})
     db.expire(a)
-    return await get_or_404(db, Asset, asset_id)
+    return _present(await get_or_404(db, Asset, asset_id), user, AssetDetailOut)
 
 
 @router.delete("/{asset_id}", status_code=204)

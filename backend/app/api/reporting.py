@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.api.deps import DB, AlertsRunner, ExporterUser, ImporterUser, ReaderUser
 from app.core.config import settings
+from app.core.permissions import has_permission
 from app.models import ImportLog, Notification
 from app.schemas import NotificationOut
 from app.services import app_settings, inbox
@@ -103,7 +104,7 @@ async def import_excel(file: UploadFile, db: DB, user: ImporterUser, audit: Audi
 
 
 @router.get("/import/history", tags=["import-export"])
-async def import_history(db: DB, _: ReaderUser, limit: int = Query(20, ge=1, le=100)):
+async def import_history(db: DB, _: ImporterUser, limit: int = Query(20, ge=1, le=100)):
     logs = (await db.execute(select(ImportLog).order_by(ImportLog.id.desc()).limit(limit))).scalars().all()
     return [
         {
@@ -124,7 +125,7 @@ async def import_history(db: DB, _: ReaderUser, limit: int = Query(20, ge=1, le=
 
 
 @router.get("/import/history/{log_id}", tags=["import-export"])
-async def import_report(log_id: int, db: DB, _: ReaderUser):
+async def import_report(log_id: int, db: DB, _: ImporterUser):
     lg = await db.get(ImportLog, log_id)
     if lg is None:
         raise HTTPException(404, "Import introuvable")
@@ -141,8 +142,11 @@ EXPORT_FILENAMES = {
 
 
 async def _export(db, user, audit, scope: str, horizon_days: int | None = None) -> Response:
-    content = await export_workbook(db, scope, horizon_days)
-    await audit.log(user, "EXPORT_EXCEL", "EXPORT", None, EXPORT_FILENAMES[scope], details={"perimetre": scope})
+    secrets = has_permission(user.role, "secrets:read")
+    content = await export_workbook(db, scope, horizon_days, include_secrets=secrets)
+    await audit.log(
+        user, "EXPORT_EXCEL", "EXPORT", None, EXPORT_FILENAMES[scope], details={"perimetre": scope, "cles_incluses": secrets}
+    )
     name = f"{EXPORT_FILENAMES[scope]}_{datetime.now():%Y%m%d_%H%M}.xlsx"
     return Response(content, media_type=XLSX, headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
@@ -176,21 +180,31 @@ async def export_planning(db: DB, user: ExporterUser, audit: Audit, horizon_days
 
 
 @router.get("/notifications", response_model=list[NotificationOut], tags=["alerts"])
-async def notifications(db: DB, _: ReaderUser, limit: int = Query(200, ge=1, le=1000)):
-    return (await db.execute(select(Notification).order_by(Notification.id.desc()).limit(limit))).scalars().all()
+async def notifications(db: DB, user: ReaderUser, limit: int = Query(200, ge=1, le=1000)):
+    """Journal d'envoi des alertes. Destinataires et texte d'erreur SMTP : réservés à `admin:settings`."""
+    rows = (await db.execute(select(Notification).order_by(Notification.id.desc()).limit(limit))).scalars().all()
+    out = [NotificationOut.model_validate(n) for n in rows]
+    if not has_permission(user.role, "admin:settings"):
+        for n in out:
+            n.recipients = None
+            n.error = None
+    return out
 
 
 @router.get("/alerts", tags=["alerts"])
-async def alerts(db: DB, _: ReaderUser):
+async def alerts(db: DB, user: ReaderUser):
     cfg = await app_settings.get_alerts(db)
     smtp_cfg, _, _ = await app_settings.get_smtp_config(db)
     general = await app_settings.get_general(db)
     items = sorted(await pending_alerts(db, cfg), key=lambda x: x["days_remaining"])
     rcpt = cfg["recipients"]
     static = ([general["admin_email"]] if rcpt["notify_admin"] and general["admin_email"] else []) + list(rcpt["custom"])
+    # Adresses des destinataires : réservées à `admin:settings` (là où elles sont configurées)
+    recipients_visible = has_permission(user.role, "admin:settings")
     return {
         "smtp_configured": smtp_cfg.configured,
-        "recipients": static,
+        "recipients_visible": recipients_visible,
+        "recipients": static if recipients_visible else [],
         "notify_owner": rcpt["notify_owner"],
         "thresholds": app_settings.enabled_thresholds(cfg),
         "notify_expired": cfg["notify_expired"],

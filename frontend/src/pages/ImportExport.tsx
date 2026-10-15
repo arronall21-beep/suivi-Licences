@@ -109,7 +109,7 @@ export default function ImportExport() {
   const [report, setReport] = useState<ImportReport | null>(null);
   const [drag, setDrag] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
-  const history = useFetch<HistoryRow[]>("/import/history");
+  const history = useFetch<HistoryRow[]>(can("import:run") ? "/import/history" : null);
 
   const doImport = async () => {
     if (!file) return;
@@ -198,6 +198,7 @@ export default function ImportExport() {
 
       {report && <Report r={report} />}
 
+      {can("import:run") && (
       <div className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-3 text-sm font-semibold text-slate-900">Historique des imports</div>
         <table className="min-w-full divide-y divide-slate-200">
@@ -222,6 +223,7 @@ export default function ImportExport() {
           </tbody>
         </table>
       </div>
+      )}
     </>
   );
 }

@@ -82,7 +82,14 @@ async def lifespan(_: FastAPI):
     stop_scheduler()
 
 
-app = FastAPI(title=settings.app_name, version=VERSION, lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
+def docs_urls(enabled: bool) -> dict[str, str | None]:
+    """URLs de documentation de l'API ; toutes désactivées (404) lorsque `enabled` est faux (production)."""
+    if not enabled:
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {"docs_url": "/api/docs", "redoc_url": "/redoc", "openapi_url": "/api/openapi.json"}
+
+
+app = FastAPI(title=settings.app_name, version=VERSION, lifespan=lifespan, **docs_urls(settings.api_docs_enabled))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

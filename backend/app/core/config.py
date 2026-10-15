@@ -2,6 +2,9 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Environnements où la documentation interactive de l'API peut être servie (tout autre nom, dont « production », la désactive)
+DOCS_ENVIRONMENTS = frozenset({"development", "dev", "local", "test", "testing"})
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -51,6 +54,11 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = True
     alert_hour: int = 7
+
+    @property
+    def api_docs_enabled(self) -> bool:
+        """Documentation interactive (Swagger, ReDoc, schéma OpenAPI) : jamais hors des environnements de développement/test."""
+        return self.environment.strip().lower() in DOCS_ENVIRONMENTS
 
     @property
     def cors_origin_list(self) -> list[str]:
