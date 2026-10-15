@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
+from app.api.deps import DB, DeleterUser, ReaderUser, WriterUser, get_or_404
 from app.models import Contract, Vendor
 from app.schemas import ContractIn, ContractOut
 from app.services.audit import Audit, changed_fields
@@ -18,7 +18,7 @@ async def _check_vendor(db, vendor_id):
 
 @router.get("", response_model=list[ContractOut])
 async def list_contracts(
-    db: DB, _: CurrentUser, q: str | None = None, vendor_id: int | None = None, type: str | None = None, status: str | None = None
+    db: DB, _: ReaderUser, q: str | None = None, vendor_id: int | None = None, type: str | None = None, status: str | None = None
 ):
     stmt = select(Contract).outerjoin(Vendor, Contract.vendor_id == Vendor.id).order_by(Contract.end_date.asc().nulls_last())
     if q:
@@ -42,7 +42,7 @@ async def list_contracts(
 
 
 @router.get("/{contract_id}", response_model=ContractOut)
-async def get_contract(contract_id: int, db: DB, _: CurrentUser):
+async def get_contract(contract_id: int, db: DB, _: ReaderUser):
     return await get_or_404(db, Contract, contract_id)
 
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import and_, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, InboxUser
 from app.models import AppNotification, AppNotificationRead
 from app.services.inbox import audience_filter, unread_count
 
@@ -27,7 +27,7 @@ def _out(n: AppNotification, read: bool) -> dict:
 @router.get("")
 async def list_inbox(
     db: DB,
-    user: CurrentUser,
+    user: InboxUser,
     unread_only: bool = False,
     priority: str | None = Query(None, pattern="^(HIGH|MEDIUM|LOW)$"),
     page: int = Query(1, ge=1),
@@ -60,12 +60,12 @@ async def list_inbox(
 
 
 @router.get("/unread-count")
-async def get_unread_count(db: DB, user: CurrentUser):
+async def get_unread_count(db: DB, user: InboxUser):
     return {"unread": await unread_count(db, user)}
 
 
 @router.post("/read-all")
-async def read_all(db: DB, user: CurrentUser):
+async def read_all(db: DB, user: InboxUser):
     ids = (await db.execute(select(AppNotification.id).where(audience_filter(user)))).scalars().all()
     if ids:
         stmt = pg_insert(AppNotificationRead).values([{"notification_id": i, "user_id": user.id} for i in ids])
@@ -75,9 +75,12 @@ async def read_all(db: DB, user: CurrentUser):
 
 
 @router.post("/{notification_id}/read")
-async def mark_read(notification_id: int, db: DB, user: CurrentUser):
-    n = await db.get(AppNotification, notification_id)
-    if n is None or not (user.role == "ADMIN" or n.audience == "ALL"):
+async def mark_read(notification_id: int, db: DB, user: InboxUser):
+    # Même condition de visibilité que la liste : une notification non visible est « introuvable »
+    n = (
+        await db.execute(select(AppNotification).where(AppNotification.id == notification_id, audience_filter(user)))
+    ).scalar_one_or_none()
+    if n is None:
         raise HTTPException(404, "Notification introuvable")
     await db.execute(pg_insert(AppNotificationRead).values(notification_id=n.id, user_id=user.id).on_conflict_do_nothing())
     await db.commit()

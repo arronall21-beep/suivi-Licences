@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query
 from sqlalchemy import or_, select
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, ReaderUser
+from app.core.permissions import has_permission
 from app.models import Asset, Contract, User, Vendor
 
 router = APIRouter(tags=["search"])
@@ -9,7 +10,7 @@ LIMIT = 8
 
 
 @router.get("/search")
-async def global_search(db: DB, user: CurrentUser, q: str = Query(..., min_length=2, max_length=100)):
+async def global_search(db: DB, user: ReaderUser, q: str = Query(..., min_length=2, max_length=100)):
     """Recherche globale : actifs, contrats, fournisseurs (et utilisateurs pour les administrateurs)."""
     like = f"%{q.strip()}%"
     assets = (
@@ -70,7 +71,7 @@ async def global_search(db: DB, user: CurrentUser, q: str = Query(..., min_lengt
         .all()
     )
     users: list[User] = []
-    if user.role == "ADMIN":
+    if has_permission(user.role, "admin:users"):  # liste des comptes : réservée à la gestion des utilisateurs
         users = (
             (
                 await db.execute(

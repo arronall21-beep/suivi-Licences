@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import DB, CurrentUser, DeleterUser, WriterUser, get_or_404
+from app.api.deps import DB, DeleterUser, ReaderUser, WriterUser, get_or_404
 from app.models import Asset, Contract, Vendor
 from app.schemas import VendorIn, VendorOut
 from app.services.audit import Audit, changed_fields
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/vendors", tags=["vendors"])
 
 
 @router.get("", response_model=list[VendorOut])
-async def list_vendors(db: DB, _: CurrentUser, q: str | None = None):
+async def list_vendors(db: DB, _: ReaderUser, q: str | None = None):
     stmt = select(Vendor).order_by(func.lower(Vendor.name))
     if q:
         stmt = stmt.where(or_(Vendor.name.ilike(f"%{q}%"), Vendor.reference.ilike(f"%{q}%")))
@@ -20,7 +20,7 @@ async def list_vendors(db: DB, _: CurrentUser, q: str | None = None):
 
 
 @router.get("/{vendor_id}", response_model=VendorOut)
-async def get_vendor(vendor_id: int, db: DB, _: CurrentUser):
+async def get_vendor(vendor_id: int, db: DB, _: ReaderUser):
     return await get_or_404(db, Vendor, vendor_id)
 
 
