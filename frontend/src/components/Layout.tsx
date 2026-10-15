@@ -23,7 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useConfig } from "../config";
-import ChangePasswordModal from "./ChangePasswordModal";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 import GlobalSearch from "./GlobalSearch";
 import NotificationBell, { useUnreadCount } from "./NotificationBell";
 import { brand } from "../theme";
@@ -46,6 +46,7 @@ function UserMenu() {
   const [open, setOpen] = useState(false);
   const [pwd, setPwd] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
     document.addEventListener("mousedown", close);
@@ -55,7 +56,7 @@ function UserMenu() {
   const initials = name.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="relative" ref={ref}>
-      <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button ref={triggerRef} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">{initials}</span>
         <span className="hidden text-left leading-tight md:block">
           <span className="block max-w-[10rem] truncate text-sm font-medium text-slate-900">{name}</span>
@@ -78,7 +79,7 @@ function UserMenu() {
           </button>
         </div>
       )}
-      <ChangePasswordModal open={pwd} onClose={() => setPwd(false)} />
+      <ChangePasswordDialog open={pwd} onClose={() => setPwd(false)} returnFocusRef={triggerRef} />
     </div>
   );
 }
