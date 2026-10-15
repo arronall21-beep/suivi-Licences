@@ -8,9 +8,10 @@ ROLE_LABELS = {
 
 ROLE_DESCRIPTIONS = {
     "ADMIN": "Accès complet : utilisateurs, paramètres, SMTP, journal d'audit, import, suppression, données métier.",
-    "MANAGER": "Accès métier : création et modification des actifs, contrats, fournisseurs et affectations ; "
+    "MANAGER": "Accès métier : création et modification des actifs (clés de licence comprises), contrats, fournisseurs et affectations ; "
     "exports et notifications. Pas d'accès à l'administration, à l'import ni à la suppression.",
-    "VIEWER": "Consultation : dashboard, actifs, contrats, planning, notifications et exports. Aucune modification.",
+    "VIEWER": "Consultation : dashboard, actifs, contrats, planning, notifications et exports. Aucune modification ; "
+    "les clés de licence sont masquées.",
 }
 
 # Libellés lisibles des permissions (page Rôles)
@@ -20,6 +21,7 @@ PERMISSION_LABELS = {
     "data:delete": "Supprimer actifs, contrats, fournisseurs",
     "import:run": "Importer un fichier Excel",
     "export:run": "Exporter en Excel",
+    "secrets:read": "Voir les secrets des actifs (clés de licence) dans l'application et dans les exports",
     "notifications:read": "Consulter ses notifications",
     "notifications:admin": "Consulter les notifications d'administration métier (imports)",
     "notifications:security": "Consulter les notifications de sécurité des comptes (demandes de réinitialisation de mot de passe)",
@@ -32,6 +34,8 @@ PERMISSION_LABELS = {
 }
 
 _READ = {"data:read", "export:run", "notifications:read"}
+# Secrets des actifs (clés de licence) : jamais accordés par `data:read` / `export:run` (lecture seule)
+_SECRETS = {"secrets:read"}
 _ADMIN_ONLY = {
     "data:delete",
     "import:run",
@@ -47,8 +51,8 @@ _ADMIN_ONLY = {
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "VIEWER": frozenset(_READ),
-    "MANAGER": frozenset(_READ | {"data:write"}),
-    "ADMIN": frozenset(_READ | {"data:write"} | _ADMIN_ONLY),
+    "MANAGER": frozenset(_READ | _SECRETS | {"data:write"}),
+    "ADMIN": frozenset(_READ | _SECRETS | {"data:write"} | _ADMIN_ONLY),
 }
 
 

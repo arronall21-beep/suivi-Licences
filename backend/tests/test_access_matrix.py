@@ -60,8 +60,6 @@ _add(
     f"GET {API}/search",
     f"GET {API}/alerts",
     f"GET {API}/notifications",
-    f"GET {API}/import/history",
-    f"GET {API}/import/history/{{log_id}}",
     f"GET {API}/export/excel",
     f"GET {API}/export/licences",
     f"GET {API}/export/contrats",
@@ -90,6 +88,8 @@ _add(
     f"DELETE {API}/contracts/{{contract_id}}",
     f"DELETE {API}/vendors/{{vendor_id}}",
     f"POST {API}/import/excel",
+    f"GET {API}/import/history",
+    f"GET {API}/import/history/{{log_id}}",
     f"POST {API}/alerts/run",
     f"GET {API}/users",
     f"POST {API}/users",
@@ -138,8 +138,6 @@ _declare(
     "GET /search",
     "GET /alerts",
     "GET /notifications",
-    "GET /import/history",
-    "GET /import/history/{log_id}",
 )
 _declare(
     "export:run",
@@ -172,7 +170,7 @@ _declare(
     "DELETE /assignments/{assignment_id}",
 )
 _declare("data:delete", False, "DELETE /assets/{asset_id}", "DELETE /contracts/{contract_id}", "DELETE /vendors/{vendor_id}")
-_declare("import:run", False, "POST /import/excel")
+_declare("import:run", False, "POST /import/excel", "GET /import/history", "GET /import/history/{log_id}")
 _declare("alerts:run", False, "POST /alerts/run")
 _declare(
     "admin:users",
@@ -296,13 +294,14 @@ async def test_declared_policies():
 
 
 def test_role_permission_sets_are_frozen():
-    """Seuls ajouts depuis la matrice d'origine : `notifications:admin` (LOT 1) et `notifications:security` (LOT 1.1), ADMIN seul."""
+    """Ajouts depuis la matrice d'origine : `notifications:admin` (LOT 1) et `notifications:security` (LOT 1.1), ADMIN seul ;
+    `secrets:read` (correctif de sécurité), ADMIN et MANAGER, jamais VIEWER."""
     read = {"data:read", "export:run", "notifications:read"}
     assert ROLE_PERMISSIONS["VIEWER"] == frozenset(read)
-    assert ROLE_PERMISSIONS["MANAGER"] == frozenset(read | {"data:write"})
+    assert ROLE_PERMISSIONS["MANAGER"] == frozenset(read | {"data:write", "secrets:read"})
     assert ROLE_PERMISSIONS["ADMIN"] == frozenset(
         read
-        | {"data:write", "data:delete", "import:run", "alerts:run"}
+        | {"data:write", "secrets:read", "data:delete", "import:run", "alerts:run"}
         | {"admin:users", "admin:settings", "admin:smtp", "admin:audit", "admin:system"}
         | {"notifications:admin", "notifications:security"}
     )

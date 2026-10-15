@@ -195,8 +195,16 @@ def _planning_rows(items: list[dict]) -> list[list]:
     return rows
 
 
-async def export_workbook(db: AsyncSession, scope: str = "all", horizon_days: int | None = None) -> bytes:
-    """Classeur au gabarit métier. scope : all (7 onglets), licences, contrats, echeances, planning."""
+SECRET_COLUMNS = frozenset({"license_key"})  # colonnes retirées des exports sans `secrets:read`
+
+
+async def export_workbook(
+    db: AsyncSession, scope: str = "all", horizon_days: int | None = None, include_secrets: bool = False
+) -> bytes:
+    """Classeur au gabarit métier. scope : all (7 onglets), licences, contrats, echeances, planning.
+
+    `include_secrets=False` (défaut) : les colonnes secrètes (clé de licence) sont absentes du fichier, pas seulement vides.
+    """
     if scope not in SCOPES:
         raise ValueError(f"Périmètre d'export inconnu : {scope}")
     general = await app_settings.get_general(db)
@@ -206,11 +214,12 @@ async def export_workbook(db: AsyncSession, scope: str = "all", horizon_days: in
     wb.remove(wb.active)
 
     def asset_sheet(sheet: L.Sheet):
+        columns = [c for c in sheet.columns if include_secrets or c.key not in SECRET_COLUMNS]
         rows = [
-            [_asset_value(a, c) for c in sheet.columns]
+            [_asset_value(a, c) for c in columns]
             for a in sorted((a for a in assets if a.category == sheet.category), key=lambda a: a.reference)
         ]
-        _write_table(wb.create_sheet(sheet.name), sheet.columns, rows, fmt)
+        _write_table(wb.create_sheet(sheet.name), columns, rows, fmt)
 
     def contract_sheet():
         rows = [[_contract_value(c, col) for col in L.CONTRATS.columns] for c in sorted(contracts, key=lambda c: c.reference)]

@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import { CATEGORY_LABELS, CERT_TYPES, CURRENCY, CONTRACT_TYPES, CRITICALITIES, ENVIRONMENTS, LICENSE_TYPES } from "../format";
 import { useReferenceData } from "../hooks";
 import type { Asset, Assignment, Category, Contract, Vendor } from "../types";
@@ -98,6 +99,7 @@ const ASSET_KEYS = [
 
 export function AssetForm({ asset, category, onSaved, onCancel }: { asset?: Asset | null; category?: Category; onSaved: (a: Asset) => void; onCancel: () => void }) {
   const toast = useToast();
+  const { can } = useAuth();
   const { vendors, contracts } = useReferenceData();
   const { values, bind } = useForm(toValues(asset ?? { category: category ?? "LICENCE" }, ASSET_KEYS));
   const [saving, setSaving] = useState(false);
@@ -164,9 +166,11 @@ export function AssetForm({ asset, category, onSaved, onCancel }: { asset?: Asse
           <Field label="Quantité totale">
             <input className="input" type="number" min={0} {...bind("total_quantity")} />
           </Field>
-          <Field label="Clé de licence">
-            <input className="input" {...bind("license_key")} />
-          </Field>
+          {can("secrets:read") && (
+            <Field label="Clé de licence">
+              <input className="input" {...bind("license_key")} />
+            </Field>
+          )}
         </Section>
       )}
       {cat === "CERTIFICAT" && (

@@ -160,7 +160,7 @@ async def test_import_history_and_inbox(admin, manager):
     assert ok["imported_by"] == "admin@example.com" and ok["errors_count"] == 1
     failed_report = (await admin.get(f"{API}/import/history/{history[0]['id']}")).json()
     assert failed_report["errors"][0]["message"].startswith("Format attendu")
-    assert (await manager.get(f"{API}/import/history")).status_code == 200  # consultation ouverte à tous les connectés
+    assert (await manager.get(f"{API}/import/history")).status_code == 403  # historique réservé à `import:run` (ADMIN)
 
     inbox = (await admin.get(f"{API}/inbox")).json()
     kinds = [n["kind"] for n in inbox["items"]]

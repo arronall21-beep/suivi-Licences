@@ -66,6 +66,7 @@ export interface Asset {
   observation: string | null;
   lic_type: string | null;
   license_key: string | null;
+  has_license_key?: boolean;
   total_quantity: number | null;
   cert_type: string | null;
   authority: string | null;

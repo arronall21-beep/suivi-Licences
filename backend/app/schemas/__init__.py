@@ -238,6 +238,8 @@ class AssetOut(AssetBase, ORM):
     effective_end_date: date | None = None
     days_remaining: int | None = None
     status: str
+    # Vrai si une clé de licence est enregistrée, même lorsque sa valeur est masquée (permission `secrets:read` absente)
+    has_license_key: bool = False
     assigned_quantity: int = 0
     available_quantity: int | None = None
     usage_rate: float | None = None
