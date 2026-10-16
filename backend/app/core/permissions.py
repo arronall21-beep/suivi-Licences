@@ -62,3 +62,8 @@ def permissions_for(role: str) -> frozenset[str]:
 
 def has_permission(role: str, permission: str) -> bool:
     return permission in permissions_for(role)
+
+
+def has_system_permission(role: str, permission: str) -> bool:
+    """Permission d'administration système : comme `require_permission(..., system=True)`, elle exige aussi le rôle ADMIN."""
+    return role == "ADMIN" and has_permission(role, permission)
